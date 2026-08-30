@@ -1,0 +1,1343 @@
+/* Latis chrome — Mash glass, overlay-host layout. No corner bolts. */
+
+:root {
+  color-scheme: dark;
+  --board: min(100vw, 100dvh);
+  --stage-h: var(--board);
+  --ink: #f7fff8;
+  --cyan: #7ef0e4;
+  --cyan-hot: #b8ff9a;
+  --primary: #7ef0e4;
+  --secondary: #5c3010;
+  --vol-fill: var(--primary);
+  --palette-0: var(--primary);
+  --palette-1: var(--secondary);
+  --hud-fill: rgba(255, 248, 230, 0.18);
+  --hud-font: "Trebuchet MS", "Avenir Next", "Segoe UI", ui-sans-serif, sans-serif;
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-blur: 22px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  background: #052433;
+  overflow: hidden;
+  font-family: var(--hud-font);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+#app {
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 0;
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+header {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+#play-row {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+#chrome { display: contents; }
+#chrome-title { display: block; }
+#ionic-mark { display: none; }
+#stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+  margin: 0;
+  touch-action: none;
+}
+#bg-mount {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 0;
+  pointer-events: none;
+}
+#mount {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 1;
+}
+#board-2d,
+#board-webgl,
+#board-webgpu {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: transparent;
+  pointer-events: none;
+}
+#stage { touch-action: none; }
+#hit {
+  /* Clicks go to #stage. Never paint a CSS grid over the world (it showed in water). */
+  display: none !important;
+  pointer-events: none !important;
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+}
+#hit button {
+  appearance: none;
+  border: 0;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none !important;
+  cursor: pointer;
+}
+#hit button:disabled { cursor: default; }
+#hit button:focus,
+#hit button:focus-visible,
+#hit button:active {
+  outline: none;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.glass-panel,
+#score-card,
+#timer-card,
+#radio {
+  position: relative;
+  border-radius: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 248, 230, 0.18);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow: 0 18px 48px rgba(18, 40, 70, 0.28);
+  clip-path: none;
+}
+.glass-panel::before,
+.glass-panel::after,
+#score-card::before,
+#score-card::after,
+#timer-card::before,
+#timer-card::after,
+#radio::before,
+#radio::after {
+  content: none;
+  display: none;
+}
+
+#chrome-title {
+  position: relative;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+  overflow: visible;
+}
+#chrome-title img,
+#wordmark {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(18dvh, 160px);
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(10, 40, 20, 0.35));
+  pointer-events: none;
+}
+
+#radio {
+  order: 3;
+  grid-column: 1;
+  grid-row: 2;
+  flex: 0 0 52px;
+  min-height: 52px;
+  max-height: 52px;
+  min-width: 0;
+  width: 100%;
+  height: 52px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 5;
+  touch-action: manipulation;
+  border-radius: 16px;
+}
+#radio input,
+#radio button {
+  touch-action: manipulation;
+}
+#radio-cover {
+  position: relative;
+  z-index: 3;
+  display: block;
+  width: 40px;
+  height: 40px;
+  max-width: 40px;
+  max-height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  align-self: center;
+  flex: 0 0 40px;
+  border-radius: 10px;
+  background: #123;
+  order: 1;
+}
+#radio-meta {
+  position: relative;
+  z-index: 3;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  order: 2;
+}
+#radio-title {
+  position: relative;
+  z-index: 3;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #fffef4;
+  letter-spacing: 0.04em;
+  text-align: left;
+  order: 1;
+}
+#radio-eq-wrap {
+  position: relative;
+  z-index: 3;
+  display: none;
+  min-width: 0;
+  width: 100%;
+  height: 22px;
+  flex: 0 0 22px;
+  background: rgba(255, 248, 230, 0.22);
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: none;
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  pointer-events: none;
+  order: 2;
+}
+#radio-eq {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  pointer-events: none;
+}
+#radio-controls {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  min-width: 0;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0;
+  order: 3;
+}
+#radio button {
+  flex: 0 0 40px;
+  min-width: 0;
+  width: 40px;
+  height: 40px;
+  max-width: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fffef4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  clip-path: none;
+  box-shadow: none;
+}
+#radio-play {
+  width: 40px;
+  height: 40px;
+  max-width: 40px;
+}
+#radio button:active { background: rgba(255,255,255,0.16); }
+#radio button svg { width: 22px; height: 22px; fill: currentColor; }
+#radio-play.playing { background: transparent; }
+#radio-play .icon-pause { display: none; }
+#radio-play.playing .icon-play { display: none; }
+#radio-play.playing .icon-pause { display: block; }
+#radio-mute .icon-speaker-off,
+#radio-mute.is-muted .icon-speaker {
+  display: none;
+}
+#radio-mute.is-muted .icon-speaker-off {
+  display: block;
+}
+
+#radio-vol-wrap {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  width: 100%;
+  min-width: 0;
+  order: 2;
+}
+#radio-vol {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--primary);
+  opacity: 1;
+}
+#radio-vol::-webkit-slider-runnable-track {
+  height: 9px;
+  border-radius: 99px;
+  background: linear-gradient(
+    to right,
+    var(--vol-fill) 0%,
+    var(--vol-fill) var(--vol-pct, 55%),
+    rgba(8, 30, 40, 0.42) var(--vol-pct, 55%),
+    rgba(8, 30, 40, 0.42) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.92);
+  border: 0;
+}
+#radio-vol::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 20px;
+  margin-top: -5.5px;
+  border: 0;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow:
+    0 2px 8px rgba(18, 40, 70, 0.38),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+}
+#radio-vol::-moz-range-track {
+  height: 9px;
+  border-radius: 99px;
+  background: rgba(8, 30, 40, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+}
+#radio-vol::-moz-range-progress {
+  height: 9px;
+  border-radius: 99px;
+  background: var(--vol-fill);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+}
+#radio-vol::-moz-range-thumb {
+  width: 30px;
+  height: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow:
+    0 2px 8px rgba(18, 40, 70, 0.38),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+}
+#radio-vol-pct {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: rgba(42, 20, 8, 0.82);
+  color: #fff6c8;
+  font-size: 11px;
+  font-weight: 800;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#radio-vol-pct[hidden] {
+  display: none !important;
+}
+
+#score-card {
+  display: flex;
+  order: 2;
+  grid-column: 2;
+  grid-row: 2;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-align: center;
+  z-index: 5;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 72px;
+  height: 52px;
+  max-height: 52px;
+  border-radius: 16px;
+}
+#score-card .stat,
+#score-card #status {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+#score-card .stat-high,
+#score-card #hint,
+#turn-mark {
+  display: none;
+}
+#score-card .label { font-size: 10px; }
+#score-card #score { font-size: 22px; }
+
+#score-card .stat { display: flex; flex-direction: column; min-width: 0; }
+#score-card .label,
+#timer-card .label {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #ffe566;
+  text-shadow: 0 1px 0 rgba(40, 20, 0, 0.45);
+}
+#score-card #score,
+#score-card #high-score,
+#score-card #level {
+  font-size: clamp(18px, 2.4vw, 28px);
+  font-weight: 900;
+  color: #fffef4;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+#score-card #status {
+  margin: 0;
+  font-size: clamp(16px, 2vw, 22px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fffef4;
+  line-height: 1.1;
+  text-shadow: none;
+}
+#score-card #hint {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,254,244,0.85);
+}
+#turn-mark {
+  display: block;
+  font-size: clamp(32px, 4.4vw, 58px);
+  font-weight: 900;
+  line-height: 0.95;
+  color: #8dff7a;
+  text-shadow: 0 0 16px rgba(120, 255, 140, 0.5);
+  letter-spacing: 0.04em;
+}
+#score-card .stat,
+#score-card #status {
+  border-bottom: 1px solid rgba(255,255,255,0.28);
+  padding-bottom: 8px;
+}
+#timer-card .label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.timer-icon {
+  width: 18px;
+  height: 18px;
+  color: #ffe566;
+}
+#timer-row,
+#score-card .stat-level {
+  display: none;
+}
+#score-card .stat-time #timer,
+#score-card #timer {
+  font-size: clamp(16px, 2vw, 22px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #fffef4;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+#timer-card {
+  display: none !important;
+}
+#timer-card #timer {
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #fffef4;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+#edge-fade { display: none; }
+#dock { display: contents; }
+#ionic-mark img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-height: 42px;
+  max-width: min(52vw, 240px);
+  margin-left: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(10,20,40,0.4));
+}
+
+/* Overlay host: this title's only layout. Full-bleed ocean, floating Mash glass.
+ * NOT nested inside another media query. World is the page at every size.
+ */
+html[data-host="overlay"],
+html[data-host="overlay"] body {
+  background: transparent;
+}
+html[data-host="overlay"] #app {
+  padding: 0;
+  display: block;
+  position: relative;
+  height: 100dvh;
+  width: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+html[data-host="overlay"] #play-row {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  background: transparent;
+}
+html[data-host="overlay"] #stage {
+  position: absolute;
+  inset: 0;
+  order: unset;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+  margin: 0;
+  flex: none;
+  grid-column: unset;
+  justify-self: unset;
+  align-self: unset;
+  --board: 100%;
+  background: transparent;
+}
+html[data-host="overlay"] #bg-mount,
+html[data-host="overlay"] #mount,
+html[data-host="overlay"] #board-2d,
+html[data-host="overlay"] #board-webgl,
+html[data-host="overlay"] #board-webgpu {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+html[data-host="overlay"] #play-row {
+  pointer-events: none;
+}
+html[data-host="overlay"] #stage {
+  pointer-events: auto;
+  z-index: 1;
+}
+html[data-host="overlay"] #chrome,
+html[data-host="overlay"] #dock {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  overflow: visible;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-host="overlay"] #chrome-title,
+html[data-host="overlay"] #ionic-mark,
+html[data-host="overlay"] #move-chip {
+  pointer-events: none;
+}
+html[data-host="overlay"] #radio,
+html[data-host="overlay"] #score-card,
+html[data-host="overlay"] #timer-card {
+  pointer-events: auto;
+}
+html[data-host="overlay"] #chrome {
+  right: 16px;
+  left: auto;
+  top: 16px;
+  width: max-content;
+  max-width: min(200px, 28vw);
+  flex-direction: column;
+  gap: 12px;
+  height: auto;
+  max-height: calc(100dvh - 32px);
+  grid-column: unset;
+  justify-self: unset;
+  align-self: unset;
+  overflow: visible;
+}
+html[data-host="overlay"] #dock {
+  position: absolute;
+  left: 16px;
+  right: auto;
+  top: calc(16px + min(22dvh, 160px) + 8px);
+  bottom: 16px;
+  width: min(260px, 24vw);
+  max-width: 260px;
+  height: auto;
+  max-height: none;
+  gap: 10px;
+  overflow: visible;
+  grid-column: unset;
+  justify-self: unset;
+  align-self: unset;
+}
+html[data-host="overlay"] #chrome-title {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  z-index: 9;
+  display: block !important;
+  visibility: visible;
+  opacity: 1;
+  max-width: min(260px, 24vw);
+  max-height: min(22dvh, 160px);
+  width: auto;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+  min-height: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
+  pointer-events: none;
+}
+html[data-host="overlay"] #chrome-title img,
+html[data-host="overlay"] #wordmark {
+  display: block !important;
+  visibility: visible;
+  opacity: 1;
+  position: relative;
+  left: auto;
+  top: auto;
+  height: auto;
+  width: auto;
+  max-width: min(260px, 24vw);
+  max-height: min(22dvh, 160px);
+  object-fit: contain;
+}
+html[data-host="overlay"] #score-card {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 0;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  align-self: flex-end;
+  flex: 0 0 auto;
+  order: unset;
+  padding: 0;
+  text-align: left;
+  gap: 8px;
+  overflow: visible;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 0;
+}
+html[data-host="overlay"] #score-card .stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 16px;
+  border: 3px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 248, 230, 0.18);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow: 0 10px 28px rgba(18, 40, 70, 0.22);
+}
+html[data-host="overlay"] #timer-card {
+  display: none !important;
+}
+html[data-host="overlay"] #timer-row,
+html[data-host="overlay"] #score-card .stat-time,
+html[data-host="overlay"] #score-card .stat-level {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  padding-top: 0;
+}
+html[data-host="overlay"] #score-card .label,
+html[data-host="overlay"] #score-card .stat-turn .label {
+  color: #ffe566;
+}
+html[data-host="overlay"] #score-card #timer,
+html[data-host="overlay"] #score-card #level {
+  font-size: clamp(20px, 2.6vw, 32px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #fffef4;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+html[data-host="overlay"] #timer-row .timer-icon {
+  display: none;
+}
+html[data-host="overlay"] #score-card .stat,
+html[data-host="overlay"] #score-card #turn-mark {
+  width: 100%;
+}
+html[data-host="overlay"] #score-card #status {
+  border-bottom: 0;
+  padding-bottom: 0;
+  width: auto;
+  color: #fffef4;
+  text-shadow: none;
+  font-size: clamp(18px, 2.2vw, 26px);
+}
+html[data-host="overlay"] #radio {
+  order: unset;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
+  align-self: stretch;
+  flex: 0 0 auto;
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 32px;
+}
+html[data-host="overlay"] #radio-meta {
+  display: contents;
+}
+html[data-host="overlay"] #radio button {
+  flex: 1;
+  width: auto;
+  max-width: none;
+  height: 36px;
+}
+html[data-host="overlay"] #radio-play {
+  width: auto;
+  height: 36px;
+  max-width: none;
+}
+html[data-host="overlay"] #radio-cover {
+  display: block !important;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: min(220px, 26dvh);
+  min-width: 0;
+  min-height: 120px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  flex: 0 0 auto;
+  order: 1;
+}
+html[data-host="overlay"] #radio-eq-wrap {
+  display: block !important;
+  height: 48px;
+  max-height: 48px;
+  min-height: 48px;
+  flex: 0 0 48px;
+  order: 2;
+  border-radius: 10px;
+}
+html[data-host="overlay"] #radio-title {
+  display: block !important;
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.2;
+  min-height: 2.4em;
+  order: 3;
+}
+html[data-host="overlay"] #radio-controls {
+  display: flex !important;
+  flex: 0 0 auto;
+  justify-content: space-between;
+  width: 100%;
+  gap: 4px;
+  order: 4;
+}
+html[data-host="overlay"] #radio-vol-wrap {
+  display: flex !important;
+  flex: 0 0 auto;
+  order: 5;
+  min-height: 22px;
+  align-items: center;
+}
+html[data-host="overlay"] #radio-vol {
+  opacity: 1;
+}
+html[data-host="overlay"] #radio-vol-pct {
+  left: 50%;
+  right: auto;
+  top: -18px;
+  transform: translateX(-50%);
+}
+html[data-host="overlay"] #radio-prev,
+html[data-host="overlay"] #radio-next,
+html[data-host="overlay"] #radio-mute { display: flex !important; }
+html[data-host="overlay"] #turn-mark,
+html[data-host="overlay"] #move-chip,
+html[data-host="overlay"] #hint,
+html[data-host="overlay"] #score-card .stat-high {
+  display: none !important;
+}
+#copy { display: none; margin: 0; }
+html[data-host="overlay"] #legal { display: contents; }
+html[data-host="overlay"] #ionic-mark {
+  display: block;
+  margin: 8px auto 0;
+  padding: 2px 0 0;
+  width: 100%;
+  text-align: center;
+  line-height: 0;
+  text-decoration: none;
+  opacity: 0.96;
+  flex: 0 0 auto;
+  align-self: center;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-host="overlay"] #ionic-mark img {
+  display: inline-block;
+  max-height: min(40px, 7dvh);
+  max-width: 88%;
+  filter:
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.85))
+    drop-shadow(0 2px 8px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 14px rgba(0, 0, 0, 0.45));
+}
+html[data-host="overlay"] #ionic-mark:hover { opacity: 1; }
+
+#move-chip { display: none; }
+html[data-host="overlay"] #move-chip { display: none; }
+
+/* Tall overlay: row 1 logo + radio, row 2 metric chips (hug content), bottom © + ionic.games.
+ * Portrait OR narrow — landscape iPad keeps the desktop overlay (899px was too wide).
+ */
+@media (orientation: portrait), (max-width: 700px) {
+  html[data-host="overlay"] #play-row {
+    pointer-events: none;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: 56px auto 1fr;
+    column-gap: 8px;
+    row-gap: 8px;
+    padding:
+      max(8px, env(safe-area-inset-top, 0px))
+      max(8px, env(safe-area-inset-right, 0px))
+      0
+      max(8px, env(safe-area-inset-left, 0px));
+    box-sizing: border-box;
+  }
+  html[data-host="overlay"] #stage {
+    pointer-events: auto;
+  }
+  html[data-host="overlay"] #chrome {
+    display: contents;
+    position: static;
+    width: auto;
+    height: auto;
+    max-height: none;
+    pointer-events: none;
+    overflow: visible;
+  }
+  html[data-host="overlay"] #dock {
+    display: contents;
+    position: static;
+    width: auto;
+    height: auto;
+    max-height: none;
+    pointer-events: none;
+    overflow: visible;
+  }
+  html[data-host="overlay"] #radio,
+  html[data-host="overlay"] #score-card {
+    pointer-events: auto;
+  }
+  html[data-host="overlay"] #legal {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: absolute;
+    left: max(8px, env(safe-area-inset-left, 0px));
+    right: max(8px, env(safe-area-inset-right, 0px));
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    z-index: 8;
+    pointer-events: auto;
+  }
+  html[data-host="overlay"] #copy {
+    display: block;
+    margin: 0;
+    padding: 0;
+    color: #fffef4;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-shadow:
+      0 1px 1px rgba(0, 0, 0, 0.85),
+      0 2px 8px rgba(0, 0, 0, 0.55);
+  }
+  html[data-host="overlay"] #ionic-mark {
+    display: block !important;
+    margin: 0;
+    padding: 0;
+    width: auto;
+    flex: 0 0 auto;
+    pointer-events: auto;
+  }
+  html[data-host="overlay"] #ionic-mark img {
+    display: block;
+    max-height: 22px;
+    max-width: 42vw;
+    width: auto;
+    height: 22px;
+    object-fit: contain;
+    filter:
+      drop-shadow(0 1px 1px rgba(0, 0, 0, 0.85))
+      drop-shadow(0 2px 8px rgba(0, 0, 0, 0.55));
+  }
+  html[data-host="overlay"] #chrome-title {
+    position: relative;
+    left: auto;
+    top: auto;
+    grid-column: 1;
+    grid-row: 1;
+    z-index: 9;
+    display: flex !important;
+    align-items: center;
+    visibility: visible;
+    opacity: 1;
+    max-height: 56px;
+    max-width: 28vw;
+    width: auto;
+    height: 56px;
+    pointer-events: none;
+  }
+  html[data-host="overlay"] #chrome-title img,
+  html[data-host="overlay"] #wordmark {
+    position: relative;
+    left: auto;
+    top: auto;
+    display: block !important;
+    visibility: visible;
+    opacity: 1;
+    max-height: 56px;
+    max-width: 28vw;
+    width: auto;
+    height: 56px;
+    object-fit: contain;
+  }
+  html[data-host="overlay"] #move-chip { display: none !important; }
+  html[data-host="overlay"] #timer-card { display: none !important; }
+  html[data-host="overlay"] #stage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+  html[data-host="overlay"] #radio {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    top: auto;
+    grid-column: 2;
+    grid-row: 1;
+    height: 56px;
+    max-height: 56px;
+    min-height: 56px;
+    width: auto;
+    min-width: 0;
+    flex: none;
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 16px;
+    z-index: 8;
+    overflow: visible;
+  }
+  html[data-host="overlay"] #radio-meta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 3px;
+    order: 2;
+    position: relative;
+  }
+  html[data-host="overlay"] #radio-cover {
+    display: block !important;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    max-width: 40px;
+    max-height: 40px;
+    flex: 0 0 40px;
+    order: 1;
+  }
+  html[data-host="overlay"] #radio-title {
+    display: block !important;
+    flex: 0 0 auto;
+    font-size: 11px;
+    line-height: 1.15;
+    min-height: 0;
+    text-align: left;
+    order: 1;
+  }
+  html[data-host="overlay"] #radio-eq-wrap {
+    display: block !important;
+    position: relative;
+    width: 100%;
+    height: 22px;
+    min-height: 22px;
+    max-height: 22px;
+    flex: 0 0 22px;
+    order: 2;
+    pointer-events: none;
+    border-radius: 6px;
+  }
+  html[data-host="overlay"] #radio-eq {
+    display: block;
+    width: 100%;
+    height: 22px;
+  }
+  html[data-host="overlay"] #radio-vol-wrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 22px;
+    min-height: 22px;
+    max-height: 22px;
+    margin: 0;
+    padding: 0;
+    order: 2;
+    z-index: 4;
+    display: flex !important;
+    align-items: stretch;
+  }
+  html[data-host="overlay"] #radio-vol {
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 100%;
+    height: 22px;
+    margin: 0;
+    opacity: 1;
+    accent-color: var(--primary);
+  }
+  html[data-host="overlay"] #radio-vol::-webkit-slider-runnable-track {
+    height: 9px;
+    border-radius: 99px;
+    background: linear-gradient(
+      to right,
+      var(--vol-fill) 0%,
+      var(--vol-fill) var(--vol-pct, 55%),
+      rgba(8, 30, 40, 0.42) var(--vol-pct, 55%),
+      rgba(8, 30, 40, 0.42) 100%
+    );
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.92);
+  }
+  html[data-host="overlay"] #radio-vol::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 30px;
+    height: 20px;
+    margin-top: -5.5px;
+    border: 0;
+    border-radius: 999px;
+    background: #ffffff;
+    box-shadow:
+      0 2px 8px rgba(18, 40, 70, 0.38),
+      0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+  html[data-host="overlay"] #radio-vol::-moz-range-track {
+    height: 9px;
+    border-radius: 99px;
+    background: rgba(8, 30, 40, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.92);
+  }
+  html[data-host="overlay"] #radio-vol::-moz-range-progress {
+    height: 9px;
+    border-radius: 99px;
+    background: var(--vol-fill);
+    border: 1px solid rgba(255, 255, 255, 0.92);
+  }
+  html[data-host="overlay"] #radio-vol::-moz-range-thumb {
+    width: 30px;
+    height: 20px;
+    border: 0;
+    border-radius: 999px;
+    background: #ffffff;
+    box-shadow:
+      0 2px 8px rgba(18, 40, 70, 0.38),
+      0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+  html[data-host="overlay"] #radio-eq-wrap {
+    opacity: 0;
+    pointer-events: none;
+  }
+  html[data-host="overlay"] #radio-vol-pct {
+    left: auto;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  html[data-host="overlay"] #radio-controls {
+    display: flex !important;
+    flex: 0 0 auto;
+    width: auto;
+    justify-content: flex-start;
+    gap: 0;
+    order: 3;
+  }
+  html[data-host="overlay"] #radio button,
+  html[data-host="overlay"] #radio-play {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    max-width: 40px;
+  }
+  html[data-host="overlay"] #radio-prev { display: none !important; }
+  html[data-host="overlay"] #radio-next,
+  html[data-host="overlay"] #radio-mute,
+  html[data-host="overlay"] #radio-play { display: flex !important; }
+  html[data-host="overlay"] #score-card {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    width: max-content;
+    max-width: 100%;
+    flex: none;
+    min-width: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 0;
+    z-index: 9;
+    overflow: visible;
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    align-items: stretch;
+    gap: 6px;
+  }
+  html[data-host="overlay"] #score-card .stat {
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    padding: 4px 8px;
+    border-radius: 14px;
+    border: 3px solid rgba(255, 255, 255, 0.72);
+    background: rgba(255, 248, 230, 0.18);
+    backdrop-filter: blur(22px) saturate(1.35);
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    box-shadow: 0 8px 20px rgba(18, 40, 70, 0.22);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 1px;
+  }
+  html[data-host="overlay"] #score-card .stat-high,
+  html[data-host="overlay"] #score-card #hint,
+  html[data-host="overlay"] #turn-mark {
+    display: none !important;
+  }
+  html[data-host="overlay"] #score-card .stat {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 0;
+    width: auto;
+    text-align: center;
+  }
+  html[data-host="overlay"] #score-card .label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    line-height: 1.1;
+    color: #ffe566;
+  }
+  html[data-host="overlay"] #score-card #status {
+    display: block !important;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #8dff7a;
+    text-shadow: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    line-height: 1.1;
+  }
+  html[data-host="overlay"] #score-card #score,
+  html[data-host="overlay"] #score-card #timer,
+  html[data-host="overlay"] #score-card #level {
+    font-size: 16px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: #fffef4;
+  }
+  html[data-host="overlay"] #radio-title {
+    max-width: 100%;
+  }
+}
+
+
+#fps-hud {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 40;
+  margin: 0;
+  padding: 6px 8px;
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #e7fcff;
+  background: rgba(2, 5, 10, 0.82);
+  border: 1px solid rgba(126, 240, 228, 0.5);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}

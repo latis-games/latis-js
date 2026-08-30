@@ -1,0 +1,6 @@
+{
+  "name": "latis-js",
+  "private": true,
+  "type": "module",
+  "description": "Latis engine — public ES module for Latis titles"
+}

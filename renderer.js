@@ -145,13 +145,15 @@ void main() {
   vec2 origin = (u_res - vec2(side)) * 0.5;
   vec2 px = v_uv * u_res;
   vec2 local = (px - origin) / max(side, 1.0);
-  // Cover: photo fills the window. No side bars. No letterbox fill.
+  // Cover: side = max(res). Zoom is real, including < 1 pullback (floor 1e-6, not 1).
+  // Zoom >= 1 fills the window. Zoom < 1 shows more island. Off-photo is Gerstner to the edge.
+  // No side bars. No letterbox fill.
   // Rotate around 0.5 AFTER local, BEFORE zoom.
   vec2 p = local - 0.5;
   float rc = cos(u_rot);
   float rs = sin(u_rot);
   p = vec2(rc * p.x - rs * p.y, rs * p.x + rc * p.y);
-  vec2 iuv = p / max(u_zoom, 1.0) + 0.5 - u_pan;
+  vec2 iuv = p / max(u_zoom, 1e-6) + 0.5 - u_pan;
   vec2 uv = vec2(iuv.x, 1.0 - iuv.y);
   vec2 uvC = clamp(uv, 0.0, 1.0);
   float inPhoto = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);

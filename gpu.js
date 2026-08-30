@@ -131,13 +131,15 @@ fn fs(input: VSOut) -> @location(0) vec4<f32> {
   let origin = (u.res - vec2<f32>(side)) * 0.5;
   let px = v_uv * u.res;
   let local = (px - origin) / max(side, 1.0);
-  // Cover: photo fills the window. No side bars. No letterbox fill.
+  // Cover: side = max(res). Zoom is real, including < 1 pullback (floor 1e-6, not 1).
+  // Zoom >= 1 fills the window. Zoom < 1 shows more island. Off-photo is Gerstner to the edge.
+  // No side bars. No letterbox fill.
   // Rotate around 0.5 AFTER local, BEFORE zoom.
   var p = local - vec2<f32>(0.5);
   let rc = cos(u.rot);
   let rs = sin(u.rot);
   p = vec2<f32>(rc * p.x - rs * p.y, rs * p.x + rc * p.y);
-  let iuv = p / max(u.zoom, 1.0) + 0.5 - vec2<f32>(u.panX, u.panY);
+  let iuv = p / max(u.zoom, 1e-6) + 0.5 - vec2<f32>(u.panX, u.panY);
   let uv = vec2<f32>(iuv.x, 1.0 - iuv.y);
   let uvC = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
   let inPhoto = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);

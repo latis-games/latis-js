@@ -2,7 +2,9 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p dist
-npx --yes esbuild entry.js --bundle --format=esm --minify --loader:.css=text --outfile=dist/engine.min.js
+# Do not overwrite dist/engine.min.js — that file is the stable CDN pin.
+npx --yes esbuild entry.js --bundle --format=esm --minify --loader:.css=text --outfile=dist/engine.min-vnext.js
+npx --yes esbuild player/index.js --bundle --format=esm --minify --outfile=dist/latis-music-player.min.js
 cat > dist/index.html << 'HTML'
 <!doctype html>
 <html lang="en">
@@ -17,8 +19,10 @@ cat > dist/index.html << 'HTML'
   </head>
   <body>
     <h1>Latis engine</h1>
-    <p>Public ES module for Latis titles. Not a game.</p>
-    <p><a href="./engine.min.js">engine.min.js</a></p>
+    <p>Public ES modules for Latis titles. Not a game.</p>
+    <p><a href="./engine.min.js">engine.min.js</a> (stable CDN pin)</p>
+    <p><a href="./engine.min-vnext.js">engine.min-vnext.js</a></p>
+    <p><a href="./latis-music-player.min.js">latis-music-player.min.js</a></p>
   </body>
 </html>
 HTML

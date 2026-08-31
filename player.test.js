@@ -70,7 +70,11 @@ test("deckReady requires matching src and HAVE_FUTURE_DATA", () => {
 
 test("audio vis-hide is clip-rect, never display:none", () => {
   assert.match(AUDIO_VIS_HIDE, /clip:\s*rect/);
+  assert.match(AUDIO_VIS_HIDE, /display\s*:\s*block/i);
   assert.doesNotMatch(AUDIO_VIS_HIDE, /display\s*:\s*none/i);
+  const audioBlock = PLAYER_CSS.slice(PLAYER_CSS.indexOf("audio.lmp-audio"), PLAYER_CSS.indexOf(".lmp-eq-wrap"));
+  assert.match(audioBlock, /display:\s*block\s*!important/);
+  assert.doesNotMatch(audioBlock, /display:\s*none/);
 });
 
 test("player CSS bans backdrop-filter, blur, drop-shadow, will-change", () => {

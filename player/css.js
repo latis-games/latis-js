@@ -24,7 +24,9 @@ export const PLAYER_CSS = `
 .lmp-player *,
 .lmp-player *::before,
 .lmp-player *::after { box-sizing: border-box; }
-.lmp-audio {
+audio.lmp-audio {
+  /* Beat the UA hidden-audio rule so Safari keeps the element path. */
+  display: block !important;
   position: absolute;
   width: 1px;
   height: 1px;

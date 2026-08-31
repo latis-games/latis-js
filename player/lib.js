@@ -69,4 +69,4 @@ export function wrapIndex(i, len) {
 
 /** 1px clip-rect vis-hide. Never `display:none` on `<audio>` (Safari). */
 export const AUDIO_VIS_HIDE =
-  "position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip:rect(0,0,0,0);border:0;pointer-events:none";
+  "display:block !important;position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip:rect(0,0,0,0);border:0;pointer-events:none";

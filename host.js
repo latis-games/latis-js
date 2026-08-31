@@ -15,7 +15,6 @@
 
 import { startRenderer } from "./renderer.js";
 import { mountChrome, applyChrome, setScoreHud, setTimerHud } from "./chrome.js";
-import { initRadio } from "./radio.js";
 import { classifyStroke, isLine, twoLinesAreCross, majorityCell, pathLength, strokeFitsCell } from "./draw.js";
 import { applyPanToBox, screenToIslandUV } from "./camera.js";
 
@@ -45,9 +44,8 @@ function wrapEngine(engine) {
 
 export async function createGame({ Engine, context, rules, settings, skin, host } = {}) {
   const mode = host || (skin && skin.host) || (settings && settings.host) || "board";
-  const stamped = applyChrome(skin, settings, mode);
-  const playlist = (skin && skin.playlist) || (settings && settings.playlist) || (stamped && stamped.playlist) || [];
-  const radio = initRadio(playlist);
+  const stamped = await applyChrome(skin, settings, mode);
+  const radio = (stamped && stamped.player) || window.__latisRadio;
   const Ctor = Engine || (context && context.loadKernel && (await context.loadKernel()));
   if (!Ctor) throw new Error("LatisEngine missing — pass Engine or context.loadKernel");
   let engine = new Ctor(settings.cols, settings.rows);

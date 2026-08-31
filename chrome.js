@@ -1,50 +1,21 @@
 /** Engine-owned host chrome. Titles supply a skin; they do not build radio/score/layout. */
 
 import { initRadio } from "./radio.js";
+import { mountPlayer } from "./player/index.js";
+import { songUrl } from "./player/lib.js";
+import { playlistSongs, playlistMediaBase } from "./chrome-songs.js";
 import { loadShaders, setPalette } from "./shaders.js";
 import { defineMetrics, setMetric } from "./metrics.js";
 import ENGINE_CSS from "./chrome.css";
 
-const AUDIO_ID = "latis-bgm";
-
 function radioMarkup() {
-  return `
-      <aside id="radio" class="glass-panel" aria-label="Now playing">
-        <img id="radio-cover" src="./assets/covers/00.png" width="400" height="400" alt="" />
-        <div id="radio-meta">
-          <div id="radio-eq-wrap" aria-hidden="true">
-            <canvas id="radio-eq" width="280" height="48"></canvas>
-          </div>
-          <p id="radio-title"></p>
-          <div id="radio-vol-wrap">
-            <input id="radio-vol" type="range" min="0" max="100" value="55" step="1" aria-label="Volume" />
-            <span id="radio-vol-pct" hidden>55%</span>
-          </div>
-        </div>
-        <div id="radio-controls">
-          <button id="radio-prev" type="button" aria-label="Previous track">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2.2v14H6V5zm3.4 7 8.6 6.2V5.8L9.4 12z"/></svg>
-          </button>
-          <button id="radio-play" type="button" aria-label="Play">
-            <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5L8 5.5z"/></svg>
-            <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.4v14H7V5zm6.6 0H17v14h-3.4V5z"/></svg>
-          </button>
-          <button id="radio-next" type="button" aria-label="Next track">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.8 5H18v14h-2.2V5zM6 18.2V5.8L14.6 12 6 18.2z"/></svg>
-          </button>
-          <button id="radio-mute" type="button" aria-pressed="false" aria-label="Mute">
-            <svg class="icon-speaker" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.8v12.4L7.2 14.5H4V9.5zm11.1 1.1a3.2 3.2 0 0 1 0 2.8l-1.3-.7a1.7 1.7 0 0 0 0-1.4l1.3-.7zm1.9-2.3a6.2 6.2 0 0 1 0 7.4l-1.3-.8a4.7 4.7 0 0 0 0-5.8l1.3-.8z"/></svg>
-            <svg class="icon-speaker-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.8v12.4L7.2 14.5H4V9.5zm15.7-3.2 1.4 1.4-3.2 3.2 3.2 3.2-1.4 1.4-3.2-3.2-3.2 3.2-1.4-1.4 3.2-3.2-3.2-3.2 1.4-1.4 3.2 3.2 3.2-3.2z"/></svg>
-          </button>
-        </div>
-      </aside>`;
+  return `<aside id="radio" class="glass-panel" aria-label="Now playing"></aside>`;
 }
 
 function treeMarkup(skin) {
   const s = skin || {};
   const name = s.name || "";
   const tagline = s.tagline || "";
-  const word = s.wordmarkUrl || s.wordmark || "";
   return `
     <header>
       <h1>${name}</h1>
@@ -76,38 +47,7 @@ function treeMarkup(skin) {
     </div>`;
 }
 
-function ensureAudio() {
-  let el = document.getElementById(AUDIO_ID) || document.getElementById("triki-bgm");
-  if (el) return el;
-  el = document.createElement("audio");
-  el.id = AUDIO_ID;
-  el.setAttribute("preload", "auto");
-  el.setAttribute("playsinline", "");
-  el.setAttribute("webkit-playsinline", "");
-  el.setAttribute("aria-hidden", "true");
-  el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none";
-  document.body.prepend(el);
-  return el;
-}
-
-function ensurePreloads(_playlist) {
-  /* Visuals preload in main.js. Music warms after the game is up. */
-}
-
-/** After createGame. Radio fetches the current track on play, then the next near the end. */
-export function prefetchPlaylistAudio(playlist) {
-  const audio = document.getElementById("latis-bgm") || document.getElementById("triki-bgm");
-  if (!audio) return;
-  audio.preload = "auto";
-  const t = playlist && playlist[0];
-  const src = t && (t.mp3 || t.src || t.opus);
-  if (!src) return;
-  try {
-    fetch(new URL(src, location.href).href, { cache: "force-cache", credentials: "same-origin" }).catch(function () {});
-  } catch {
-    /* ignore */
-  }
-}
+export { playlistSongs, playlistMediaBase } from "./chrome-songs.js";
 
 export function chromeEls() {
   return {
@@ -146,14 +86,25 @@ export function mountChrome(skin) {
   if (!document.getElementById("play-row")) {
     app.insertAdjacentHTML("afterbegin", treeMarkup(skin));
   }
-  ensureAudio();
   if (!document.documentElement.dataset.host) {
     document.documentElement.dataset.host = "overlay";
   }
   return chromeEls();
 }
 
-export function applyChrome(skin, settings, mode) {
+/** After createGame. Warms the first AAC-LC slug.m4a. */
+export function prefetchPlaylistAudio(playlist, mediaBase) {
+  const songs = playlistSongs({ playlist: Array.isArray(playlist) ? playlist : [] });
+  const url = songUrl(mediaBase || "/media/", songs[0] || "");
+  if (!url) return;
+  try {
+    fetch(new URL(url, location.href).href, { cache: "force-cache", credentials: "same-origin" }).catch(function () {});
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function applyChrome(skin, settings, mode) {
   mountChrome(skin);
   const s = skin || {};
   const g = settings || {};
@@ -188,16 +139,24 @@ export function applyChrome(skin, settings, mode) {
   if (Array.isArray(palette) && palette.length) setPalette(palette);
   defineMetrics(s.metrics || g.metrics);
 
-  const playlist = s.playlist || g.playlist || [];
-  ensurePreloads(playlist);
-  ensureAudio();
-  const cover = document.getElementById("radio-cover");
-  if (cover && playlist[0] && playlist[0].cover) {
-    cover.src = playlist[0].cover;
-    cover.alt = playlist[0].title || "";
+  const songs = playlistSongs(s, g);
+  const mediaBase = playlistMediaBase(s, g);
+  const radioEl = document.getElementById("radio");
+  let player = null;
+  if (radioEl) {
+    player = await mountPlayer(radioEl, { mediaBase, songs });
+    window.__latisRadio = player;
   }
+  prefetchPlaylistAudio(songs, mediaBase);
   loadShaders((s && s.shadersDir) || "./shaders");
-  return { host: document.documentElement.dataset.host, playlist, els: chromeEls() };
+  return {
+    host: document.documentElement.dataset.host,
+    playlist: songs,
+    songs,
+    mediaBase,
+    player,
+    els: chromeEls(),
+  };
 }
 
 export function formatTime(seconds) {
@@ -224,4 +183,4 @@ export function setLevelHud(label) {
   setMetric("level", String(label || ""));
 }
 
-export { initRadio, defineMetrics, setMetric };
+export { initRadio, mountPlayer, defineMetrics, setMetric };

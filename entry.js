@@ -1,5 +1,5 @@
 export { createGame } from "./host.js";
-export { prefetchPlaylistAudio, mountChrome, applyChrome, initRadio, setScoreHud, setLevelHud, setTimerHud, defineMetrics, setMetric } from "./chrome.js";
+export { prefetchPlaylistAudio, mountChrome, applyChrome, initRadio, mountPlayer, playlistSongs, playlistMediaBase, setScoreHud, setLevelHud, setTimerHud, defineMetrics, setMetric } from "./chrome.js";
 export { LatisEngine } from "./engine.js";
 export { loadKernel, trikiContext, hostContext } from "./context.js";
 export { startRenderer } from "./renderer.js";

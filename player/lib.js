@@ -70,3 +70,28 @@ export function wrapIndex(i, len) {
 /** 1px clip-rect vis-hide. Never `display:none` on `<audio>` (Safari). */
 export const AUDIO_VIS_HIDE =
   "display:block !important;position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip:rect(0,0,0,0);border:0;pointer-events:none";
+
+/** Log-spectrum bar energy from analyser frequency bins. */
+export function logSpectrumBar(freqBins, i, bars) {
+  const n = freqBins && freqBins.length;
+  if (!n || bars <= 0) return 0;
+  const lo = i <= 0 ? 0 : Math.floor(Math.pow(n, i / bars));
+  const hi = Math.max(lo + 1, Math.ceil(Math.pow(n, (i + 1) / bars)));
+  let sum = 0;
+  let count = 0;
+  for (let k = lo; k < hi && k < n; k++) {
+    sum += freqBins[k];
+    count++;
+  }
+  return (sum / Math.max(1, count)) / 255;
+}
+
+export function fillLogSpectrum(freqBins, out) {
+  const bars = out && out.length;
+  if (!bars) return out;
+  for (let i = 0; i < bars; i++) {
+    const target = Math.min(1, Math.max(0, logSpectrumBar(freqBins, i, bars)));
+    out[i] += (target - out[i]) * 0.5;
+  }
+  return out;
+}

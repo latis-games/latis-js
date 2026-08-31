@@ -7,6 +7,7 @@ import {
   clamp01,
   wrapIndex,
   AUDIO_VIS_HIDE,
+  fillLogSpectrum,
 } from "./lib.js";
 
 const VOL_KEY = "lmp.volume";
@@ -58,10 +59,14 @@ function makeAudio() {
   el.setAttribute("webkit-playsinline", "true");
   el.setAttribute("preload", "auto");
   el.setAttribute("aria-hidden", "true");
+  // controls so UA audio:not([controls]){display:none} does not match.
+  el.setAttribute("controls", "");
   el.playsInline = true;
+  el.controls = true;
   el.loop = false;
   el.muted = false;
   el.style.cssText = AUDIO_VIS_HIDE;
+  el.style.setProperty("display", "block", "important");
   return el;
 }
 
@@ -208,6 +213,7 @@ export async function mountPlayer(rootEl, opts) {
   let eqRafOn = false;
   let eqBarCount = 16;
   let eqLevels = new Float32Array(eqBarCount);
+  let lastEqEnergy = 0;
 
   function urlOf(i) {
     return songUrl(mediaBase, songs[i] || "");
@@ -601,6 +607,7 @@ export async function mountPlayer(rootEl, opts) {
 
   function clearEq() {
     if (eqLevels) eqLevels.fill(0);
+    lastEqEnergy = 0;
     syncEqSize();
     paintEq(false);
   }
@@ -624,18 +631,7 @@ export async function mountPlayer(rootEl, opts) {
     const bars = eqBarCount;
     if (!safari && analyser && freqBins) {
       analyser.getByteFrequencyData(freqBins);
-      const n = freqBins.length;
-      for (let i = 0; i < bars; i++) {
-        const u = bars <= 1 ? 0 : i / (bars - 1);
-        const a = Math.floor(u * n * 0.78);
-        const b = Math.max(a + 1, Math.floor(((i + 1) / bars) * n * 0.78));
-        let sum = 0;
-        for (let k = a; k < b && k < n; k++) sum += freqBins[k];
-        let target = (sum / Math.max(1, b - a)) / 255;
-        if (u > 0.18 && u < 0.38) target *= 1.25;
-        if (u > 0.58 && u < 0.78) target *= 1.18;
-        eqLevels[i] += (Math.min(1, Math.max(0, target)) - eqLevels[i]) * 0.5;
-      }
+      fillLogSpectrum(freqBins, eqLevels);
     } else {
       const t = performance.now() / 1000;
       for (let i = 0; i < bars; i++) {
@@ -643,6 +639,9 @@ export async function mountPlayer(rootEl, opts) {
         eqLevels[i] += (target - eqLevels[i]) * 0.35;
       }
     }
+    let energy = 0;
+    for (let i = 0; i < bars; i++) energy += eqLevels[i];
+    lastEqEnergy = energy / Math.max(1, bars);
     paintEq(true);
     eqRafOn = true;
     requestAnimationFrame(drawEq);
@@ -770,10 +769,13 @@ export async function mountPlayer(rootEl, opts) {
   return {
     play,
     pause,
+    kickOff: play,
     next() { skip(1); },
     prev() { skip(-1); },
     title() { return songs[index] || ""; },
     isPlaying() { return isAudible(); },
+    beat() { return lastEqEnergy; },
+    _bound: true,
     destroy() {
       destroyed = true;
       pause();

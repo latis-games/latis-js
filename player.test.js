@@ -10,7 +10,10 @@ import {
   clamp01,
   wrapIndex,
   AUDIO_VIS_HIDE,
+  logSpectrumBar,
+  fillLogSpectrum,
 } from "./player/lib.js";
+import { playlistSongs, playlistMediaBase } from "./chrome-songs.js";
 import playerApi, { mountPlayer } from "./player/index.js";
 import { PLAYER_CSS } from "./player/css.js";
 
@@ -109,10 +112,48 @@ test("player source has no store/lattice/games knowledge", () => {
   assert.doesNotMatch(src, /createGame|initRadio|playlist\.json/);
 });
 
-test("engine entry does not import the player", () => {
-  const entry = readFileSync(new URL("./entry.js", import.meta.url), "utf8");
-  assert.doesNotMatch(entry, /player\//);
-  assert.doesNotMatch(entry, /mountPlayer/);
+test("log-spectrum maps low bins to bass and high bins to treble", () => {
+  const bins = new Uint8Array(64);
+  bins[1] = 255;
+  bins[60] = 255;
+  assert.ok(logSpectrumBar(bins, 0, 8) > 0.2);
+  assert.ok(logSpectrumBar(bins, 7, 8) > 0);
+  assert.ok(logSpectrumBar(bins, 3, 8) < 0.05);
+  const treble = new Uint8Array(64);
+  for (let i = 48; i < 64; i++) treble[i] = 255;
+  assert.ok(logSpectrumBar(treble, 7, 8) > 0.4);
+  assert.ok(logSpectrumBar(treble, 0, 8) < 0.05);
+  const out = new Float32Array(8);
+  fillLogSpectrum(bins, out);
+  assert.ok(out[0] > 0);
+  assert.ok(out[7] > 0);
+});
+
+test("chrome playlist is song title strings + mediaBase", () => {
+  assert.deepEqual(
+    playlistSongs({ songs: ["Forever On The Grid", "Watch 'Em Mash"] }, {}),
+    ["Forever On The Grid", "Watch 'Em Mash"],
+  );
+  assert.deepEqual(
+    playlistSongs({ playlist: ["Play in the sand", { title: "Watch 'Em Mash" }] }, {}),
+    ["Play in the sand", "Watch 'Em Mash"],
+  );
+  assert.equal(playlistMediaBase({}, {}), "/media/");
+  assert.equal(playlistMediaBase({ mediaBase: "https://cdn.example/media/" }, {}), "https://cdn.example/media/");
+});
+
+test("chrome vnext mounts player into empty #radio; initRadio unused", () => {
+  const chrome = readFileSync(new URL("./chrome.js", import.meta.url), "utf8");
+  const host = readFileSync(new URL("./host.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("./chrome.css", import.meta.url), "utf8");
+  assert.match(chrome, /from "\.\/player\/index\.js"/);
+  assert.match(chrome, /mountPlayer\(radioEl/);
+  assert.match(chrome, /id="radio"/);
+  assert.doesNotMatch(chrome, /id="radio-cover"/);
+  assert.doesNotMatch(chrome, /initRadio\(/);
+  assert.doesNotMatch(host, /initRadio/);
+  assert.match(css, /min-height:\s*52px/);
+  assert.match(css, /html\[data-host="overlay"\] #radio \{[\s\S]*?min-height:\s*200px/);
 });
 
 test("clamp helpers stay finite", () => {

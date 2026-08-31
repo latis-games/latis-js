@@ -800,7 +800,7 @@ html[data-host="overlay"] #radio {
   min-width: 0;
   height: auto;
   max-height: none;
-  min-height: 0;
+  min-height: 200px;
   overflow: visible;
   align-self: stretch;
   flex: 0 0 auto;
@@ -1326,6 +1326,81 @@ html[data-host="overlay"] #move-chip { display: none; }
   }
 }
 
+
+/* latis-music-player fills #radio. Empty slot already reserves min-height. */
+#radio .lmp-player {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+}
+#radio .lmp-eq-wrap {
+  flex: 1 1 auto;
+  height: 22px;
+  min-height: 22px;
+}
+#radio .lmp-title {
+  min-height: 0;
+  font-size: 11px;
+  text-align: left;
+  flex: 1 1 auto;
+}
+#radio .lmp-controls {
+  flex: 0 0 auto;
+  width: auto;
+}
+#radio .lmp-vol-wrap { display: none; }
+#radio .lmp-prev { display: none; }
+
+html[data-host="overlay"] #radio .lmp-player {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+html[data-host="overlay"] #radio .lmp-eq-wrap {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  flex: 0 0 48px;
+}
+html[data-host="overlay"] #radio .lmp-title {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 14px;
+  min-height: 2.4em;
+}
+html[data-host="overlay"] #radio .lmp-controls {
+  width: 100%;
+  justify-content: space-between;
+}
+html[data-host="overlay"] #radio .lmp-vol-wrap { display: flex; }
+html[data-host="overlay"] #radio .lmp-prev { display: flex; }
+
+@media (orientation: portrait), (max-width: 700px) {
+  html[data-host="overlay"] #radio .lmp-player {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+  html[data-host="overlay"] #radio .lmp-eq-wrap {
+    height: 22px;
+    min-height: 22px;
+    flex: 1 1 auto;
+  }
+  html[data-host="overlay"] #radio .lmp-title {
+    font-size: 11px;
+    min-height: 0;
+    text-align: left;
+    flex: 1 1 auto;
+  }
+  html[data-host="overlay"] #radio .lmp-vol-wrap { display: none; }
+  html[data-host="overlay"] #radio .lmp-prev { display: none; }
+}
 
 #fps-hud {
   position: fixed;

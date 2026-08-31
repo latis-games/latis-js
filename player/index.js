@@ -725,8 +725,15 @@ export async function mountPlayer(rootEl, opts) {
   volInput.addEventListener("touchend", hideScrub);
   volInput.addEventListener("change", hideScrub);
 
-  prevBtn.addEventListener("click", function () { skip(-1); });
-  nextBtn.addEventListener("click", function () { skip(1); });
+  let lastSkip = 0;
+  function skipFromTap(delta) {
+    const now = Date.now();
+    if (now - lastSkip < 280) return;
+    lastSkip = now;
+    skip(delta);
+  }
+  prevBtn.addEventListener("click", function () { skipFromTap(-1); });
+  nextBtn.addEventListener("click", function () { skipFromTap(1); });
 
   let lastToggle = 0;
   playBtn.addEventListener("click", function (e) {

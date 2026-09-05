@@ -2,7 +2,8 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p dist
-npx --yes esbuild entry.js --bundle --format=esm --minify --loader:.css=text --outfile=dist/engine.min.js
+# Stable engine.min.js is the pin. Only write vnext unless promoting.
+npx --yes esbuild entry.js --bundle --format=esm --minify --loader:.css=text --outfile=dist/engine.min-vnext.js
 cat > dist/index.html << 'HTML'
 <!doctype html>
 <html lang="en">
@@ -18,7 +19,7 @@ cat > dist/index.html << 'HTML'
   <body>
     <h1>Latis engine</h1>
     <p>Public ES module for Latis titles. Not a game.</p>
-    <p><a href="./engine.min.js">engine.min.js</a></p>
+    <p><a href="./engine.min.js">engine.min.js</a> (pin) · <a href="./engine.min-vnext.js">engine.min-vnext.js</a> (staging)</p>
   </body>
 </html>
 HTML

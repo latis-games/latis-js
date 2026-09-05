@@ -29,6 +29,8 @@ export {
   loadGLB,
   resizeRenderer,
 } from "./packs/scene.js";
+export { MeshoptDecoder } from "./meshopt.js";
+export { loadMesh } from "./mesh.js";
 export {
   classifyStroke,
   isLine,

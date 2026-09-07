@@ -1327,6 +1327,26 @@ html[data-host="overlay"] #move-chip { display: none; }
 }
 
 
+#world-loading {
+  position: absolute;
+  left: 50%;
+  top: 11%;
+  transform: translateX(-50%);
+  z-index: 8;
+  pointer-events: none;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(8, 28, 36, 0.40);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ink);
+  font: 600 13px/1.2 var(--hud-font);
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+#world-loading[hidden] { display: none !important; }
+
 #fps-hud {
   position: fixed;
   top: 8px;

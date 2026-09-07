@@ -10,6 +10,7 @@ import { stickLine, stickX, stickO, strokeStick } from "./draw.js";
 import { startWebGPU } from "./gpu.js";
 import { bindCamera, getCamera, playfieldZoom as camPlayfieldZoom, currentZoom as camCurrentZoom, setZoom as camSetZoom } from "./camera.js";
 import { setMetric } from "./metrics.js";
+import { paintWorldPlate, resolveWorld } from "./world.js";
 
 /** Local zoom helper. Reads skin.playfieldZoom or skin zoom fields. Never imports a title skin. */
 let _activeSkin = null;
@@ -54,6 +55,7 @@ out vec4 fragColor;
 uniform vec2 u_res;
 uniform float u_time;
 uniform sampler2D u_island;
+uniform sampler2D u_islandHi;
 uniform sampler2D u_carve;
 uniform sampler2D u_rocks;
 uniform sampler2D u_palms;
@@ -61,8 +63,28 @@ uniform float u_zoom;
 uniform vec2 u_pan;
 uniform float u_rot;
 uniform float u_fade;
+uniform vec4 u_worldUv;
+uniform vec4 u_worldUvHi;
+uniform float u_worldMix;
 
 // noise/hash/caustic deleted \u2014 grid. Shore lace is sines of unbounded wp.
+
+// Logical plate UV → inner texture. Identity when u_worldUv = (0,0,1,1).
+vec2 remapWorld(vec2 uv, vec4 pack) {
+  return (uv - pack.xy) / max(pack.zw, vec2(1.0e-6));
+}
+
+float inUnitSquare(vec2 t) {
+  return step(0.0, t.x) * step(t.x, 1.0) * step(0.0, t.y) * step(t.y, 1.0);
+}
+
+vec4 sampleWorld(vec2 uv) {
+  vec2 lo = remapWorld(uv, u_worldUv);
+  vec2 hi = remapWorld(uv, u_worldUvHi);
+  vec3 texLo = texture(u_island, clamp(lo, 0.0, 1.0)).rgb;
+  vec3 texHi = texture(u_islandHi, clamp(hi, 0.0, 1.0)).rgb;
+  return vec4(mix(texLo, texHi, u_worldMix), mix(inUnitSquare(lo), inUnitSquare(hi), u_worldMix));
+}
 
 vec3 seafloor(vec2 iuv, float t) {
   // Smooth open-ocean teal. No sine-lattice / floor / hash \u2014 those read as a grid.
@@ -98,9 +120,10 @@ vec3 oceanColor(vec2 p, vec2 uvC, vec3 photoW, vec3 N, float nh, float dispY, fl
 }
 
 float landHint(vec2 u) {
-  float inside = step(0.0, u.x) * step(u.x, 1.0) * step(0.0, u.y) * step(u.y, 1.0);
+  vec4 world = sampleWorld(u);
+  float inside = world.a;
   vec2 c = clamp(u, 0.0, 1.0);
-  vec3 a = texture(u_island, c).rgb;
+  vec3 a = world.rgb;
   float L = dot(a, vec3(0.30, 0.59, 0.11));
   float g = a.g - max(a.r, a.b);
   float veg = smoothstep(0.02, 0.10, g) * (1.0 - smoothstep(0.72, 0.90, L));
@@ -154,7 +177,8 @@ void main() {
   vec2 iuv = p / max(u_zoom, 1.0) + 0.5 - u_pan;
   vec2 uv = vec2(iuv.x, 1.0 - iuv.y);
   vec2 uvC = clamp(uv, 0.0, 1.0);
-  float inPhoto = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+  vec4 world = sampleWorld(uv);
+  float inPhoto = world.a;
   float inIsland = step(0.0, iuv.x) * step(iuv.x, 1.0) * step(0.0, iuv.y) * step(iuv.y, 1.0);
 
   vec4 palmTex = textureLod(u_palms, uvC, 0.0);
@@ -165,7 +189,7 @@ void main() {
     return;
   }
 
-  vec3 tex = texture(u_island, uvC).rgb;
+  vec3 tex = world.rgb;
   vec3 deepOcean = vec3(0.10, 0.50, 0.58);
   vec3 albedo = mix(deepOcean, tex, inPhoto);
   float lum = dot(albedo, vec3(0.30, 0.59, 0.11));
@@ -555,7 +579,7 @@ function paintGrooves2d(ctx, w, h, skin) {
   strokeAll(-0.8, -1.0, "rgba(196, 160, 110, 0.22)", lw * 0.42, 0.55 * a);
 }
 
-function paintCanvas2D(canvas, island, skin) {
+function paintCanvas2D(canvas, island, skin, world) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width;
   const h = canvas.height;
@@ -573,7 +597,8 @@ function paintCanvas2D(canvas, island, skin) {
   const ox = (w - side) / 2 + cam.panX * side;
   const oy = (h - side) / 2 + cam.panY * side;
   // 2D Tesla fallback: still photo + cheap oscillating wet-sand tint. No Gerstner/foam.
-  if (island) ctx.drawImage(island, ox, oy, side, side);
+  if (world) paintWorldPlate(ctx, world, ox, oy, side, island);
+  else if (island) ctx.drawImage(island, ox, oy, side, side);
   {
     const t = (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
     const pulse = 0.5 + 0.5 * Math.sin(t * ((Math.PI * 2) / 3.2));
@@ -594,7 +619,35 @@ function paintCanvas2D(canvas, island, skin) {
   paintGrooves2d(ctx, w, h, skin);
 }
 
-async function startWebGL(mountEl, skin, island, rocks, palms) {
+function uploadColorSource(gl, source, maxTex) {
+  let upload = source;
+  if (upload && (upload.width > maxTex || upload.height > maxTex)) {
+    const s = maxTex / Math.max(upload.width, upload.height);
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(upload.width * s));
+    c.height = Math.max(1, Math.round(upload.height * s));
+    c.getContext("2d").drawImage(upload, 0, 0, c.width, c.height);
+    upload = c;
+  }
+  if (upload) {
+    const ic = document.createElement("canvas");
+    ic.width = upload.width || upload.naturalWidth;
+    ic.height = upload.height || upload.naturalHeight;
+    ic.getContext("2d", { alpha: true, colorSpace: "srgb" }).drawImage(upload, 0, 0, ic.width, ic.height);
+    upload = ic;
+  }
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, upload);
+}
+
+function applyWorldUniforms(gl, locs, world) {
+  const s = world && world.sample ? world.sample() : null;
+  gl.uniform4f(locs.uv, s ? s.offsetX : 0, s ? s.offsetY : 0, s ? s.scaleX : 1, s ? s.scaleY : 1);
+  gl.uniform4f(locs.uvHi, s ? s.offsetHiX : 0, s ? s.offsetHiY : 0, s ? s.scaleHiX : 1, s ? s.scaleHiY : 1);
+  gl.uniform1f(locs.mix, s ? s.mix : 0);
+  return s;
+}
+
+async function startWebGL(mountEl, skin, island, rocks, palms, world) {
   const canvas = document.createElement("canvas");
   canvas.id = "board-webgl";
   canvas.setAttribute("aria-hidden", "true");
@@ -615,25 +668,13 @@ async function startWebGL(mountEl, skin, island, rocks, palms) {
   gl.activeTexture(gl.TEXTURE0);
   const islandTex = makeTexture(gl);
   const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
-  let islandUpload = island;
-  if (island && (island.width > maxTex || island.height > maxTex)) {
-    const s = maxTex / Math.max(island.width, island.height);
-    const c = document.createElement("canvas");
-    c.width = Math.max(1, Math.round(island.width * s));
-    c.height = Math.max(1, Math.round(island.height * s));
-    c.getContext("2d").drawImage(island, 0, 0, c.width, c.height);
-    islandUpload = c;
-  }
-  {
-    const ic = document.createElement("canvas");
-    ic.width = islandUpload.width || islandUpload.naturalWidth;
-    ic.height = islandUpload.height || islandUpload.naturalHeight;
-    ic.getContext("2d", { alpha: true, colorSpace: "srgb" }).drawImage(islandUpload, 0, 0, ic.width, ic.height);
-    islandUpload = ic;
-  }
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, islandUpload);
+  uploadColorSource(gl, island, maxTex);
   const err0 = gl.getError();
   if (err0) throw new Error("island tex " + err0);
+
+  gl.activeTexture(gl.TEXTURE4);
+  const islandHiTex = makeTexture(gl);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
 
   const carveCanvas = document.createElement("canvas");
   carveCanvas.width = 1024;
@@ -665,14 +706,22 @@ async function startWebGL(mountEl, skin, island, rocks, palms) {
   const uRot = gl.getUniformLocation(prog, "u_rot");
   const uFade = gl.getUniformLocation(prog, "u_fade");
   const uIsland = gl.getUniformLocation(prog, "u_island");
+  const uIslandHi = gl.getUniformLocation(prog, "u_islandHi");
   const uCarve = gl.getUniformLocation(prog, "u_carve");
   const uRocks = gl.getUniformLocation(prog, "u_rocks");
   const uPalms = gl.getUniformLocation(prog, "u_palms");
+  const worldLocs = {
+    uv: gl.getUniformLocation(prog, "u_worldUv"),
+    uvHi: gl.getUniformLocation(prog, "u_worldUvHi"),
+    mix: gl.getUniformLocation(prog, "u_worldMix"),
+  };
   gl.useProgram(prog);
   gl.uniform1i(uIsland, 0);
+  gl.uniform1i(uIslandHi, 4);
   gl.uniform1i(uCarve, 1);
   gl.uniform1i(uRocks, 2);
   gl.uniform1i(uPalms, 3);
+  applyWorldUniforms(gl, worldLocs, world);
 
   let lastKey = "";
   function uploadCarve() {
@@ -700,6 +749,13 @@ async function startWebGL(mountEl, skin, island, rocks, palms) {
       gl.uniform1f(uRot, cam.rot || 0);
     }
     gl.uniform1f(uFade, Number((window.__latisCamera && window.__latisCamera.carveFade) ?? 1));
+    const ws = applyWorldUniforms(gl, worldLocs, world);
+    if (ws && ws.uploadHi && ws.hi) {
+      gl.activeTexture(gl.TEXTURE4);
+      gl.bindTexture(gl.TEXTURE_2D, islandHiTex);
+      uploadColorSource(gl, ws.hi, maxTex);
+      if (world && world.markHiUploaded) world.markHiUploaded(performance.now());
+    }
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, islandTex);
     gl.activeTexture(gl.TEXTURE1);
@@ -708,6 +764,8 @@ async function startWebGL(mountEl, skin, island, rocks, palms) {
     gl.bindTexture(gl.TEXTURE_2D, rocksTex);
     gl.activeTexture(gl.TEXTURE3);
     gl.bindTexture(gl.TEXTURE_2D, palmsTex);
+    gl.activeTexture(gl.TEXTURE4);
+    gl.bindTexture(gl.TEXTURE_2D, islandHiTex);
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
@@ -721,7 +779,7 @@ async function startWebGL(mountEl, skin, island, rocks, palms) {
   return { path: "webgl", canvas, frame, gl };
 }
 
-function startCanvas2D(mountEl, skin, island) {
+function startCanvas2D(mountEl, skin, island, world) {
   const canvas = document.createElement("canvas");
   canvas.id = "board-2d";
   canvas.setAttribute("aria-hidden", "true");
@@ -736,10 +794,14 @@ function startCanvas2D(mountEl, skin, island) {
     const fade = Number((window.__latisCamera && window.__latisCamera.carveFade) ?? 1);
     const cam = getCamera();
     const tBucket = Math.floor(((typeof performance !== "undefined" ? performance.now() : 0) / 1000) * 5);
-    const key = skin.sourceKey() + "|" + canvas.width + "x" + canvas.height + "|z" + currentZoom() + "|f" + fade.toFixed(3) + "|p" + cam.panX.toFixed(4) + "," + cam.panY.toFixed(4) + "|r" + (cam.rot || 0).toFixed(4) + "|t" + tBucket;
+    const mix = world && world.sample ? world.sample().mix : 0;
+    const key = skin.sourceKey() + "|" + canvas.width + "x" + canvas.height + "|z" + currentZoom() + "|f" + fade.toFixed(3) + "|p" + cam.panX.toFixed(4) + "," + cam.panY.toFixed(4) + "|r" + (cam.rot || 0).toFixed(4) + "|t" + tBucket + "|w" + mix.toFixed(3);
     if (key === lastKey) return;
     lastKey = key;
-    paintCanvas2D(canvas, island, skin);
+    paintCanvas2D(canvas, island, skin, world);
+    if (world && world.sample && world.sample().uploadHi && world.markHiUploaded) {
+      world.markHiUploaded(typeof performance !== "undefined" ? performance.now() : 0);
+    }
   }
   frame();
   if (typeof ResizeObserver === "function") {
@@ -803,8 +865,9 @@ export async function startRenderer({ mountEl, skin }) {
     return startBoardPaint(mountEl, skin);
   }
   const hud = ensureFpsHud();
+  const world = resolveWorld(skin);
   let island = null;
-  try { island = await loadImage(skin.islandUrl); }
+  try { island = await world.warmLo(); }
   catch (err) { console.warn("island albedo", err); }
   let rocks = null;
   try { if (skin.rocksUrl) rocks = await loadImage(skin.rocksUrl); }
@@ -821,7 +884,7 @@ export async function startRenderer({ mountEl, skin }) {
   const wantGPU = forced !== "webgl" && forced !== "2d" && hasGpu && !!island && (forced === "webgpu" || !tesla);
   if (wantGPU) {
     try {
-      gpu = await startWebGPU({ mountEl, skin, island, rocks, palms });
+      gpu = await startWebGPU({ mountEl, skin, island, rocks, palms, world });
       path = "webgpu";
     } catch (err) {
       console.warn("renderer webgpu failed", err);
@@ -831,7 +894,7 @@ export async function startRenderer({ mountEl, skin }) {
   const wantGL = !gpu && forced !== "2d" && (forced === "webgl" || probeWebGL2());
   if (wantGL && island) {
     try {
-      gpu = await startWebGL(mountEl, skin, island, rocks, palms);
+      gpu = await startWebGL(mountEl, skin, island, rocks, palms, world);
       path = "webgl";
     } catch (err) {
       console.warn("renderer webgl failed", err);
@@ -839,19 +902,24 @@ export async function startRenderer({ mountEl, skin }) {
     }
   }
   if (!gpu) {
-    gpu = startCanvas2D(mountEl, skin, island);
+    gpu = startCanvas2D(mountEl, skin, island, world);
     path = "2d";
   }
 
   document.documentElement.dataset.renderer = path;
   document.documentElement.dataset.ready = "1";
   window.__latisCamera = Object.assign(window.__latisCamera || {}, { renderer: path });
+  if (world && world.prefetchHi) world.prefetchHi();
 
   let raf = 0;
   let fpsFrames = 0;
   let fpsStamp = 0;
   function tick(now) {
     raf = window.requestAnimationFrame(tick);
+    if (world) {
+      world.tick(now);
+      world.explore(getCamera(), viewportSize());
+    }
     if (gpu && gpu.frame) gpu.frame();
     fpsFrames += 1;
     if (!fpsStamp) fpsStamp = now;
@@ -871,6 +939,7 @@ export async function startRenderer({ mountEl, skin }) {
 
   return {
     path,
+    world,
     draw(snap) {
       if (snap && skin.draw) skin.draw(snap);
       if (gpu && gpu.frame) gpu.frame();

@@ -58,9 +58,9 @@ Games declare the canonical world plate with filenames only (resolved under `./a
 
 ```js
 bindWorld({ lo: "island.webp", hi: "island-full.webp" })
-// optional: grid, inner, fadeMs, assetsBase — defaults 4 / 2 / 200 / ./assets/
+// optional: grid, inner, fadeRate, assetsBase — defaults 4 / 2 / 0.01 / ./assets/
 ```
 
-After the board is playable the engine background-fetches and decodes `full` (does not wait for zoom/pan). If the player pans/zooms into the unloaded outer ring first, a light **Loading map…** banner appears — it is not a hard lock. When `full` is ready the world texture uploads on idle/rAF, crossfades ~150–250ms, clears the banner, and unlocks the outer plate.
+After the board is playable the engine background-fetches and decodes `full` (does not wait for zoom/pan). If the player pans/zooms into the unloaded outer ring first, a light **Loading map…** banner appears — it is not a hard lock. When `full` is ready the world texture uploads on idle/rAF and blends in at ~1% per frame (`fadeRate` 0.01). At 1.0 the engine binds only the full plate, releases the inner image (and its GPU texture), and stops sampling the inner.
 
 **UV continuity.** One logical plate. Board/shore UV stay in full-plate space. While only the inner is bound, island samples remap so the center crop fills the inner texture: `tex = (uv − offset) / scale` with `offset = (grid − inner) / (2 · grid)`. When `island-full.webp` arrives the same UV hits the same cay — nothing jumps. WebGPU, WebGL2, and Canvas2D share this path. Existing single-plate `skin.islandUrl` titles are unchanged.

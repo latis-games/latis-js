@@ -15,6 +15,7 @@ export {
   DEFAULT_ASSETS_BASE,
   DEFAULT_GRID,
   DEFAULT_INNER,
+  DEFAULT_FADE_RATE,
 } from "./world.js";
 export {
   bindCamera,

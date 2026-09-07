@@ -60,13 +60,20 @@ fn in_unit(t: vec2<f32>) -> f32 {
 }
 
 fn sample_world(uv: vec2<f32>) -> vec4<f32> {
+  let m = u.worldMix;
+  if (m <= 0.0) {
+    let lo = remap_world(uv, u.worldOffset, u.worldScale);
+    return vec4<f32>(textureSample(tex_island, samp, clamp(lo, vec2<f32>(0.0), vec2<f32>(1.0))).rgb, in_unit(lo));
+  }
+  if (m >= 1.0) {
+    let hi = remap_world(uv, u.worldOffsetHi, u.worldScaleHi);
+    return vec4<f32>(textureSample(tex_island_hi, samp, clamp(hi, vec2<f32>(0.0), vec2<f32>(1.0))).rgb, in_unit(hi));
+  }
   let lo = remap_world(uv, u.worldOffset, u.worldScale);
   let hi = remap_world(uv, u.worldOffsetHi, u.worldScaleHi);
   let texLo = textureSample(tex_island, samp, clamp(lo, vec2<f32>(0.0), vec2<f32>(1.0))).rgb;
   let texHi = textureSample(tex_island_hi, samp, clamp(hi, vec2<f32>(0.0), vec2<f32>(1.0))).rgb;
-  let tex = mix(texLo, texHi, u.worldMix);
-  let cover = mix(in_unit(lo), in_unit(hi), u.worldMix);
-  return vec4<f32>(tex, cover);
+  return vec4<f32>(mix(texLo, texHi, m), mix(in_unit(lo), in_unit(hi), m));
 }
 
 fn seafloor(iuv: vec2<f32>, t: f32) -> vec3<f32> {
@@ -514,7 +521,7 @@ export async function startWebGPU({ mountEl, skin, island, rocks, palms, world }
 
   const maxTex = (adapter.limits && adapter.limits.maxTextureDimension2D) || 8192;
   const islandSrc = downscaleSource(island, maxTex);
-  const islandTex = textureFromSource(device, islandSrc, islandSrc.width, islandSrc.height);
+  let islandTex = textureFromSource(device, islandSrc, islandSrc.width, islandSrc.height);
 
   const carveCanvas = document.createElement("canvas");
   carveCanvas.width = 1024;
@@ -583,22 +590,33 @@ export async function startWebGPU({ mountEl, skin, island, rocks, palms, world }
       uniformData[6] = cam.panY;
       uniformData[7] = cam.rot || 0;
     }
-    const ws = world && world.sample ? world.sample() : null;
+    let ws = world && world.sample ? world.sample() : null;
     if (ws && ws.uploadHi && ws.hi) {
       const hiSrc = downscaleSource(ws.hi, maxTex);
       islandHiTex = textureFromSource(device, hiSrc, hiSrc.width, hiSrc.height);
       bindGroup = makeBindGroup();
       if (world && world.markHiUploaded) world.markHiUploaded(performance.now());
+      ws = world.sample();
     }
-    uniformData[8] = ws ? ws.offsetX : 0;
-    uniformData[9] = ws ? ws.offsetY : 0;
-    uniformData[10] = ws ? ws.scaleX : 1;
-    uniformData[11] = ws ? ws.scaleY : 1;
-    uniformData[12] = ws ? ws.offsetHiX : 0;
-    uniformData[13] = ws ? ws.offsetHiY : 0;
-    uniformData[14] = ws ? ws.scaleHiX : 1;
-    uniformData[15] = ws ? ws.scaleHiY : 1;
-    uniformData[16] = ws ? ws.mix : 0;
+    if (ws && ws.promoteFull) {
+      const innerTex = islandTex;
+      islandTex = islandHiTex;
+      islandHiTex = textureFromSource(device, blackCanvas(), 1, 1);
+      bindGroup = makeBindGroup();
+      if (innerTex && typeof innerTex.destroy === "function") innerTex.destroy();
+      if (world && world.markPromoted) world.markPromoted();
+      ws = world.sample();
+    }
+    const fullOnly = !ws || ws.bindFullOnly;
+    uniformData[8] = fullOnly ? 0 : ws.offsetX;
+    uniformData[9] = fullOnly ? 0 : ws.offsetY;
+    uniformData[10] = fullOnly ? 1 : ws.scaleX;
+    uniformData[11] = fullOnly ? 1 : ws.scaleY;
+    uniformData[12] = fullOnly ? 0 : ws.offsetHiX;
+    uniformData[13] = fullOnly ? 0 : ws.offsetHiY;
+    uniformData[14] = fullOnly ? 1 : ws.scaleHiX;
+    uniformData[15] = fullOnly ? 1 : ws.scaleHiY;
+    uniformData[16] = fullOnly ? 0 : ws.mix;
     uniformData[17] = 0;
     uniformData[18] = 0;
     uniformData[19] = 0;

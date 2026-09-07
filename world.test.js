@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   DEFAULT_ASSETS_BASE,
   DEFAULT_FADE_MS,
+  DEFAULT_FADE_RATE,
   DEFAULT_GRID,
   DEFAULT_INNER,
   bindWorld,
@@ -17,7 +18,18 @@ import {
 } from "./world.js";
 
 function fakeImg(n) {
-  return { width: n, height: n };
+  return {
+    width: n,
+    height: n,
+    closed: false,
+    close() {
+      this.closed = true;
+    },
+  };
+}
+
+function isImageLikeSpec(v) {
+  return !!(v && typeof v === "object" && (v.width || v.naturalWidth));
 }
 
 function fakeAsset(attrs) {
@@ -79,6 +91,7 @@ test("normalizeWorldSpec defaults grid/inner and treats missing full as a single
   assert.equal(single.grid, DEFAULT_GRID);
   assert.equal(single.inner, DEFAULT_INNER);
   assert.equal(single.fadeMs, DEFAULT_FADE_MS);
+  assert.equal(single.fadeRate, DEFAULT_FADE_RATE);
   assert.equal(single.assetsBase, DEFAULT_ASSETS_BASE);
   assert.equal(single.loUrl, "./assets/island.webp");
   assert.equal(single.progressive, false);
@@ -135,10 +148,11 @@ test("viewportImageUvBounds matches cover mapping at zoom 1", () => {
   assert.ok(Math.abs(b.maxY - 1) < 1e-9);
 });
 
-test("bindWorld boots on lo, prefetches hi, fades after upload", async () => {
+test("bindWorld boots on lo, prefetches hi, fades ~0.01 per frame, then GCs inner", async () => {
   const lo = fakeImg(32);
   const hi = fakeImg(64);
-  const w = bindWorld({ lo, hi, fadeMs: 100 });
+  const w = bindWorld({ lo, hi });
+  assert.equal(w.spec.fadeRate, DEFAULT_FADE_RATE);
   assert.equal(w.progressive, true);
   assert.equal(await w.warmLo(), lo);
   await w.prefetchHi();
@@ -146,15 +160,33 @@ test("bindWorld boots on lo, prefetches hi, fades after upload", async () => {
   assert.equal(w.sample().uploadHi, true);
   assert.equal(w.sample().offsetX, 0.25);
   assert.equal(w.sample().scaleX, 0.5);
-  w.markHiUploaded(1000);
-  assert.equal(w.tick(1000).mix, 0);
-  const mid = w.tick(1050).mix;
-  assert.ok(mid > 0 && mid < 1);
-  assert.equal(w.tick(1100).mix, 1);
+  w.markHiUploaded();
+  assert.equal(w.mix, 0);
+  assert.equal(w.lo, lo);
+  assert.equal(w.tick().mix, 0.01);
+  for (let i = 1; i < 50; i++) w.tick();
+  assert.ok(Math.abs(w.mix - 0.5) < 1e-12);
+  assert.equal(w.lo, lo);
+  assert.equal(lo.closed, false);
+  for (let i = 50; i < 100; i++) w.tick();
+  assert.equal(w.mix, 1);
+  assert.equal(w.lo, null);
+  assert.equal(w.loReleased, true);
+  assert.equal(lo.closed, true);
+  assert.equal(isImageLikeSpec(w.spec.lo), false);
+  const pending = w.sample();
+  assert.equal(pending.lo, null);
+  assert.equal(pending.hi, hi);
+  assert.equal(pending.promoteFull, true);
+  assert.equal(pending.bindFullOnly, false);
+  w.markPromoted();
   const done = w.sample();
   assert.equal(done.offsetX, 0);
   assert.equal(done.scaleX, 1);
   assert.equal(done.mix, 1);
+  assert.equal(done.lo, null);
+  assert.equal(done.bindFullOnly, true);
+  assert.equal(done.promoteFull, false);
 });
 
 test("bindWorld single plate is identity UV and never explores-outer", async () => {
@@ -206,7 +238,6 @@ test("soft gate only banners when the user explores the unloaded ring", async ()
   const view = { w: 800, h: 800 };
   assert.equal(w.explore({ zoom: 1, panX: 0, panY: 0, panUser: false, zoomUser: false }, view), false);
   assert.equal(w.explore({ zoom: 1.7, panX: 0.2, panY: 0, panUser: true }, view), true);
-  w.markHiUploaded(0);
-  w.tick(1000);
+  w.markHiUploaded();
   assert.equal(w.explore({ zoom: 1.7, panX: 0.2, panY: 0, panUser: true }, view), false);
 });

@@ -23,6 +23,7 @@ export const DEFAULT_ASSETS_BASE = "./assets/";
 export const DEFAULT_GRID = 4;
 export const DEFAULT_INNER = 2;
 export const DEFAULT_FADE_MS = 200;
+export const DEFAULT_FADE_RATE = 0.01;
 export const WORLD_BANNER_TEXT = "Loading map…";
 
 let _world = null;
@@ -89,6 +90,8 @@ export function normalizeWorldSpec(opts = {}) {
   if (inner > grid) inner = grid;
   let fadeMs = opts.fadeMs == null || opts.fadeMs === "" ? DEFAULT_FADE_MS : num(opts.fadeMs, DEFAULT_FADE_MS);
   if (fadeMs < 0) fadeMs = 0;
+  let fadeRate = opts.fadeRate == null || opts.fadeRate === "" ? DEFAULT_FADE_RATE : num(opts.fadeRate, DEFAULT_FADE_RATE);
+  if (fadeRate < 0) fadeRate = 0;
   const loUrl = isImageLike(loIn) ? "" : resolveAssetUrl(loIn, assetsBase);
   const hiUrl = isImageLike(hiIn) ? "" : resolveAssetUrl(hiIn, assetsBase);
   const progressive = !!(hiIn && (hiUrl || isImageLike(hiIn)));
@@ -101,6 +104,7 @@ export function normalizeWorldSpec(opts = {}) {
     grid,
     inner,
     fadeMs,
+    fadeRate,
     assetsBase,
     progressive,
     uv,
@@ -161,6 +165,17 @@ export function readWorldAsset(root, opts = {}) {
     preload: typeof el.hasAttribute === "function" ? el.hasAttribute("preload") : false,
     el,
   });
+}
+
+/** Drop ImageBitmap / HTMLImageElement so the inner plate can GC. */
+export function releaseWorldImage(img) {
+  if (!img) return;
+  try {
+    if (typeof img.close === "function") img.close();
+  } catch { /* ignore */ }
+  try {
+    if (typeof img.src === "string") img.src = "";
+  } catch { /* ignore */ }
 }
 
 export function loadWorldImage(src) {
@@ -282,6 +297,7 @@ export function getWorld() {
  * @param {number} [opts.grid=4]
  * @param {number} [opts.inner=2]
  * @param {number} [opts.fadeMs=200]
+ * @param {number} [opts.fadeRate=0.01] blend step per rAF/frame
  * @param {string} [opts.assetsBase="./assets/"]
  */
 export function bindWorld(opts = {}) {
@@ -298,8 +314,11 @@ export function bindWorld(opts = {}) {
     readyToUpload: false,
     hiUploaded: false,
     hiFailed: false,
+    loReleased: false,
+    promoted: false,
     banner: false,
     fadeStart: 0,
+    fadeFrames: 0,
     _loPromise: null,
     _hiPromise: null,
 
@@ -348,28 +367,42 @@ export function bindWorld(opts = {}) {
       world.hiUploaded = true;
       world.readyToUpload = false;
       world.fadeStart = num(now, (typeof performance !== "undefined" && performance.now) ? performance.now() : 0);
-      world.mix = spec.fadeMs <= 0 ? 1 : 0;
-      if (world.mix >= 1) {
-        world.banner = false;
-        setWorldBanner(false);
-      }
+      world.fadeFrames = 0;
+      world.mix = spec.fadeRate <= 0 ? 1 : 0;
+      world.banner = false;
+      setWorldBanner(false);
+      if (world.mix >= 1) world.releaseInner();
     },
 
-    tick(now) {
-      const t = num(now, (typeof performance !== "undefined" && performance.now) ? performance.now() : 0);
+    releaseInner() {
+      if (world.loReleased && !world.lo) return;
+      const img = world.lo;
+      world.lo = null;
+      world.loReleased = true;
+      world._loPromise = null;
+      if (isImageLike(spec.lo)) spec.lo = spec.loUrl || "";
+      releaseWorldImage(img);
+    },
+
+    markPromoted() {
+      world.promoted = true;
+      if (!world.loReleased) world.releaseInner();
+    },
+
+    tick() {
       if (world.hiUploaded && world.mix < 1) {
-        if (spec.fadeMs <= 0) world.mix = 1;
-        else world.mix = Math.min(1, Math.max(0, (t - world.fadeStart) / spec.fadeMs));
-        if (world.mix >= 1) {
-          world.banner = false;
-          setWorldBanner(false);
+        if (spec.fadeRate <= 0) world.mix = 1;
+        else {
+          world.fadeFrames += 1;
+          world.mix = Math.min(1, world.fadeFrames * spec.fadeRate);
         }
+        if (world.mix >= 1) world.releaseInner();
       }
       return world.sample();
     },
 
     explore(cam, viewport) {
-      if (!spec.progressive || world.mix >= 1 || world.hiFailed) {
+      if (!spec.progressive || world.hiUploaded || world.mix >= 1 || world.hiFailed) {
         if (world.banner) {
           world.banner = false;
           setWorldBanner(false);
@@ -386,7 +419,7 @@ export function bindWorld(opts = {}) {
     },
 
     sample() {
-      const inner = spec.progressive && world.mix < 1 ? spec.uv : { offset: 0, scale: 1 };
+      const inner = spec.progressive && world.mix < 1 && !world.promoted ? spec.uv : { offset: 0, scale: 1 };
       return {
         lo: world.lo,
         hi: world.hi,
@@ -401,6 +434,9 @@ export function bindWorld(opts = {}) {
         scaleHiX: 1,
         scaleHiY: 1,
         uploadHi: !!(world.hi && world.readyToUpload && !world.hiUploaded),
+        promoteFull: !!(world.hi && world.hiUploaded && world.mix >= 1 && !world.promoted),
+        bindFullOnly: !!world.promoted,
+        loReleased: !!world.loReleased,
       };
     },
   };
@@ -440,7 +476,11 @@ export function resolveWorld(skin) {
 export function paintWorldPlate(ctx, world, ox, oy, side, fallback) {
   if (!ctx || side <= 0) return;
   const s = world && typeof world.sample === "function" ? world.sample() : null;
-  const lo = (s && s.lo) || fallback;
+  if (s && s.hi && (s.bindFullOnly || s.mix >= 1)) {
+    ctx.drawImage(s.hi, ox, oy, side, side);
+    return;
+  }
+  const lo = (s && s.lo) || (s && s.loReleased ? null : fallback);
   if (lo) {
     const o = s ? s.offsetX : 0;
     const sc = s ? s.scaleX : 1;

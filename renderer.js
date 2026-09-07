@@ -79,11 +79,20 @@ float inUnitSquare(vec2 t) {
 }
 
 vec4 sampleWorld(vec2 uv) {
+  float m = u_worldMix;
+  if (m <= 0.0) {
+    vec2 lo = remapWorld(uv, u_worldUv);
+    return vec4(texture(u_island, clamp(lo, 0.0, 1.0)).rgb, inUnitSquare(lo));
+  }
+  if (m >= 1.0) {
+    vec2 hi = remapWorld(uv, u_worldUvHi);
+    return vec4(texture(u_islandHi, clamp(hi, 0.0, 1.0)).rgb, inUnitSquare(hi));
+  }
   vec2 lo = remapWorld(uv, u_worldUv);
   vec2 hi = remapWorld(uv, u_worldUvHi);
   vec3 texLo = texture(u_island, clamp(lo, 0.0, 1.0)).rgb;
   vec3 texHi = texture(u_islandHi, clamp(hi, 0.0, 1.0)).rgb;
-  return vec4(mix(texLo, texHi, u_worldMix), mix(inUnitSquare(lo), inUnitSquare(hi), u_worldMix));
+  return vec4(mix(texLo, texHi, m), mix(inUnitSquare(lo), inUnitSquare(hi), m));
 }
 
 vec3 seafloor(vec2 iuv, float t) {
@@ -641,9 +650,15 @@ function uploadColorSource(gl, source, maxTex) {
 
 function applyWorldUniforms(gl, locs, world) {
   const s = world && world.sample ? world.sample() : null;
-  gl.uniform4f(locs.uv, s ? s.offsetX : 0, s ? s.offsetY : 0, s ? s.scaleX : 1, s ? s.scaleY : 1);
-  gl.uniform4f(locs.uvHi, s ? s.offsetHiX : 0, s ? s.offsetHiY : 0, s ? s.scaleHiX : 1, s ? s.scaleHiY : 1);
-  gl.uniform1f(locs.mix, s ? s.mix : 0);
+  if (!s || s.bindFullOnly) {
+    gl.uniform4f(locs.uv, 0, 0, 1, 1);
+    gl.uniform4f(locs.uvHi, 0, 0, 1, 1);
+    gl.uniform1f(locs.mix, 0);
+    return s;
+  }
+  gl.uniform4f(locs.uv, s.offsetX, s.offsetY, s.scaleX, s.scaleY);
+  gl.uniform4f(locs.uvHi, s.offsetHiX, s.offsetHiY, s.scaleHiX, s.scaleHiY);
+  gl.uniform1f(locs.mix, s.mix);
   return s;
 }
 
@@ -666,14 +681,14 @@ async function startWebGL(mountEl, skin, island, rocks, palms, world) {
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
   gl.activeTexture(gl.TEXTURE0);
-  const islandTex = makeTexture(gl);
+  let islandTex = makeTexture(gl);
   const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
   uploadColorSource(gl, island, maxTex);
   const err0 = gl.getError();
   if (err0) throw new Error("island tex " + err0);
 
   gl.activeTexture(gl.TEXTURE4);
-  const islandHiTex = makeTexture(gl);
+  let islandHiTex = makeTexture(gl);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
 
   const carveCanvas = document.createElement("canvas");
@@ -749,13 +764,23 @@ async function startWebGL(mountEl, skin, island, rocks, palms, world) {
       gl.uniform1f(uRot, cam.rot || 0);
     }
     gl.uniform1f(uFade, Number((window.__latisCamera && window.__latisCamera.carveFade) ?? 1));
-    const ws = applyWorldUniforms(gl, worldLocs, world);
+    let ws = world && world.sample ? world.sample() : null;
     if (ws && ws.uploadHi && ws.hi) {
       gl.activeTexture(gl.TEXTURE4);
       gl.bindTexture(gl.TEXTURE_2D, islandHiTex);
       uploadColorSource(gl, ws.hi, maxTex);
       if (world && world.markHiUploaded) world.markHiUploaded(performance.now());
+      ws = world.sample();
     }
+    if (ws && ws.promoteFull) {
+      gl.deleteTexture(islandTex);
+      islandTex = islandHiTex;
+      gl.activeTexture(gl.TEXTURE4);
+      islandHiTex = makeTexture(gl);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+      if (world && world.markPromoted) world.markPromoted();
+    }
+    applyWorldUniforms(gl, worldLocs, world);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, islandTex);
     gl.activeTexture(gl.TEXTURE1);
@@ -788,20 +813,29 @@ function startCanvas2D(mountEl, skin, island, world) {
   canvas.style.pointerEvents = "none";
   mountEl.appendChild(canvas);
   skin.setCanvas2D(canvas);
+  let plate = island;
   let lastKey = "";
   function frame() {
     sizeCanvas(canvas, mountEl);
     const fade = Number((window.__latisCamera && window.__latisCamera.carveFade) ?? 1);
     const cam = getCamera();
     const tBucket = Math.floor(((typeof performance !== "undefined" ? performance.now() : 0) / 1000) * 5);
-    const mix = world && world.sample ? world.sample().mix : 0;
+    let ws = world && world.sample ? world.sample() : null;
+    if (ws && ws.uploadHi && world.markHiUploaded) {
+      world.markHiUploaded(typeof performance !== "undefined" ? performance.now() : 0);
+      ws = world.sample();
+    }
+    if (ws && ws.promoteFull && world.markPromoted) {
+      plate = ws.hi || null;
+      world.markPromoted();
+      ws = world.sample();
+    }
+    if (ws && (ws.bindFullOnly || ws.loReleased)) plate = ws.hi || null;
+    const mix = ws ? ws.mix : 0;
     const key = skin.sourceKey() + "|" + canvas.width + "x" + canvas.height + "|z" + currentZoom() + "|f" + fade.toFixed(3) + "|p" + cam.panX.toFixed(4) + "," + cam.panY.toFixed(4) + "|r" + (cam.rot || 0).toFixed(4) + "|t" + tBucket + "|w" + mix.toFixed(3);
     if (key === lastKey) return;
     lastKey = key;
-    paintCanvas2D(canvas, island, skin, world);
-    if (world && world.sample && world.sample().uploadHi && world.markHiUploaded) {
-      world.markHiUploaded(typeof performance !== "undefined" ? performance.now() : 0);
-    }
+    paintCanvas2D(canvas, plate, skin, world);
   }
   frame();
   if (typeof ResizeObserver === "function") {
@@ -917,8 +951,9 @@ export async function startRenderer({ mountEl, skin }) {
   function tick(now) {
     raf = window.requestAnimationFrame(tick);
     if (world) {
-      world.tick(now);
+      const ws = world.tick(now);
       world.explore(getCamera(), viewportSize());
+      if (ws && ws.loReleased) island = null;
     }
     if (gpu && gpu.frame) gpu.frame();
     fpsFrames += 1;

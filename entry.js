@@ -4,6 +4,20 @@ export { LatisEngine } from "./engine.js";
 export { loadKernel, trikiContext, hostContext } from "./context.js";
 export { startRenderer } from "./renderer.js";
 export {
+  bindWorld,
+  readWorldAsset,
+  resolveWorld,
+  resolveAssetUrl,
+  worldUvRect,
+  remapWorldUv,
+  getWorld,
+  setWorldBanner,
+  DEFAULT_ASSETS_BASE,
+  DEFAULT_GRID,
+  DEFAULT_INNER,
+  DEFAULT_FADE_RATE,
+} from "./world.js";
+export {
   bindCamera,
   PAN_KEY_DELTA,
   ROT_KEY_DELTA,

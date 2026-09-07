@@ -41,3 +41,26 @@ Raw `.bin` int16 soup stays a title-side `fetch` + `Int16Array`. Do not route th
 Shared zoom + pan + rot on `window.__latisCamera`. Two-finger trackpad + Safari pinch + mobile pinch zoom; WASD/arrows pan with A/D inverted vs the old mapping; Q/E rotate the cay; no mouse/trackpad pan. `u_pan` / `u_rot` are in WebGL + WGSL. Host UV and the hit grid use the same mapping so strokes stay on the carved board.
 
 Paint modes (`skin.paint`): `"overlay"` (island water, default), `"board"` (clear + `skin.draw`), `"scene"`.
+
+## Progressive world plate
+Games declare the canonical world plate with filenames only (resolved under `./assets/`, or `skin.assetsBase` / `data-latis-assets`):
+
+```html
+<latis-asset id="world" src="island.webp" full="island-full.webp" preload />
+```
+
+- `id="world"` — the world plate.
+- `src` — boot image: compressed center `inner×inner` of a `grid×grid` (defaults **2 of 4**). Play starts when this is warm.
+- `full` — upgrade pack (higher-res full plate, including outer tiles). Omit `full` and `src` is the only plate (today’s `skin.islandUrl` / `island.webp` bind).
+- `grid` / `inner` default to **4 / 2**. Omit them unless a title overrides.
+
+`latis-loader` (separate repo) should preload only `src` for `#world` and may leave `full` / `grid` / `inner` on the element. The engine reads the tag, or titles can call:
+
+```js
+bindWorld({ lo: "island.webp", hi: "island-full.webp" })
+// optional: grid, inner, fadeRate, assetsBase — defaults 4 / 2 / 0.01 / ./assets/
+```
+
+After the board is playable the engine background-fetches and decodes `full` (does not wait for zoom/pan). If the player pans/zooms into the unloaded outer ring first, a light **Loading map…** banner appears — it is not a hard lock. When `full` is ready the world texture uploads on idle/rAF and blends in at ~1% per frame (`fadeRate` 0.01). At 1.0 the engine binds only the full plate, releases the inner image (and its GPU texture), and stops sampling the inner.
+
+**UV continuity.** One logical plate. Board/shore UV stay in full-plate space. While only the inner is bound, island samples remap so the center crop fills the inner texture: `tex = (uv − offset) / scale` with `offset = (grid − inner) / (2 · grid)`. When `island-full.webp` arrives the same UV hits the same cay — nothing jumps. WebGPU, WebGL2, and Canvas2D share this path. Existing single-plate `skin.islandUrl` titles are unchanged.

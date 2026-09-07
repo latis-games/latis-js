@@ -13,6 +13,13 @@ struct Uniforms {
   panX: f32,
   panY: f32,
   rot: f32,
+  worldOffset: vec2<f32>,
+  worldScale: vec2<f32>,
+  worldOffsetHi: vec2<f32>,
+  worldScaleHi: vec2<f32>,
+  worldMix: f32,
+  _pad0: f32,
+  _pad1: vec2<f32>,
 };
 
 struct VSOut {
@@ -26,6 +33,7 @@ struct VSOut {
 @group(0) @binding(3) var tex_carve: texture_2d<f32>;
 @group(0) @binding(4) var tex_rocks: texture_2d<f32>;
 @group(0) @binding(5) var tex_palms: texture_2d<f32>;
+@group(0) @binding(6) var tex_island_hi: texture_2d<f32>;
 
 @vertex
 fn vs(@builtin(vertex_index) vid: u32) -> VSOut {
@@ -42,6 +50,31 @@ fn vs(@builtin(vertex_index) vid: u32) -> VSOut {
 }
 
 // noise/hash/caustic deleted \u2014 grid. Shore lace is sines of unbounded wp.
+
+fn remap_world(uv: vec2<f32>, offset: vec2<f32>, scale: vec2<f32>) -> vec2<f32> {
+  return (uv - offset) / max(scale, vec2<f32>(1.0e-6));
+}
+
+fn in_unit(t: vec2<f32>) -> f32 {
+  return step(0.0, t.x) * step(t.x, 1.0) * step(0.0, t.y) * step(t.y, 1.0);
+}
+
+fn sample_world(uv: vec2<f32>) -> vec4<f32> {
+  let m = u.worldMix;
+  if (m <= 0.0) {
+    let lo = remap_world(uv, u.worldOffset, u.worldScale);
+    return vec4<f32>(textureSample(tex_island, samp, clamp(lo, vec2<f32>(0.0), vec2<f32>(1.0))).rgb, in_unit(lo));
+  }
+  if (m >= 1.0) {
+    let hi = remap_world(uv, u.worldOffsetHi, u.worldScaleHi);
+    return vec4<f32>(textureSample(tex_island_hi, samp, clamp(hi, vec2<f32>(0.0), vec2<f32>(1.0))).rgb, in_unit(hi));
+  }
+  let lo = remap_world(uv, u.worldOffset, u.worldScale);
+  let hi = remap_world(uv, u.worldOffsetHi, u.worldScaleHi);
+  let texLo = textureSample(tex_island, samp, clamp(lo, vec2<f32>(0.0), vec2<f32>(1.0))).rgb;
+  let texHi = textureSample(tex_island_hi, samp, clamp(hi, vec2<f32>(0.0), vec2<f32>(1.0))).rgb;
+  return vec4<f32>(mix(texLo, texHi, m), mix(in_unit(lo), in_unit(hi), m));
+}
 
 fn seafloor(iuv: vec2<f32>, t: f32) -> vec3<f32> {
   // Smooth open-ocean teal. No sine-lattice / floor / hash \u2014 those read as a grid.
@@ -87,9 +120,10 @@ fn oceanColor(p: vec2<f32>, uvC: vec2<f32>, photoW: vec3<f32>, N: vec3<f32>, nh:
 }
 
 fn landHint(uu: vec2<f32>) -> f32 {
-  let inside = step(0.0, uu.x) * step(uu.x, 1.0) * step(0.0, uu.y) * step(uu.y, 1.0);
+  let world = sample_world(uu);
+  let inside = world.a;
   let c = clamp(uu, vec2<f32>(0.0), vec2<f32>(1.0));
-  let a = textureSample(tex_island, samp, c).rgb;
+  let a = world.rgb;
   let L = dot(a, vec3<f32>(0.30, 0.59, 0.11));
   let g = a.g - max(a.r, a.b);
   let veg = smoothstep(0.02, 0.10, g) * (1.0 - smoothstep(0.72, 0.90, L));
@@ -140,14 +174,15 @@ fn fs(input: VSOut) -> @location(0) vec4<f32> {
   let iuv = p / max(u.zoom, 1.0) + 0.5 - vec2<f32>(u.panX, u.panY);
   let uv = vec2<f32>(iuv.x, 1.0 - iuv.y);
   let uvC = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
-  let inPhoto = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+  let world = sample_world(uv);
+  let inPhoto = world.a;
   let inIsland = step(0.0, iuv.x) * step(iuv.x, 1.0) * step(0.0, iuv.y) * step(iuv.y, 1.0);
 
   let palmTex = textureSampleLevel(tex_palms, samp, uvC, 0.0);
   let palm = palmTex.a * inPhoto;
   // Hard overlay is applied at the end so remaining textureSample stays uniform.
 
-  let tex = textureSample(tex_island, samp, uvC).rgb;
+  let tex = world.rgb;
   let deepOcean = vec3<f32>(0.10, 0.50, 0.58);
   let albedo = mix(deepOcean, tex, inPhoto);
   let lum = dot(albedo, vec3<f32>(0.30, 0.59, 0.11));
@@ -421,7 +456,7 @@ function blackCanvas() {
   return c;
 }
 
-export async function startWebGPU({ mountEl, skin, island, rocks, palms }) {
+export async function startWebGPU({ mountEl, skin, island, rocks, palms, world }) {
   if (!mountEl) throw new Error("startWebGPU: mountEl required");
   if (!skin) throw new Error("startWebGPU: skin required");
   if (!island) throw new Error("startWebGPU: island required");
@@ -464,6 +499,7 @@ export async function startWebGPU({ mountEl, skin, island, rocks, palms }) {
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
       { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
       { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      { binding: 6, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
     ],
   });
   const pipeline = device.createRenderPipeline({
@@ -485,7 +521,7 @@ export async function startWebGPU({ mountEl, skin, island, rocks, palms }) {
 
   const maxTex = (adapter.limits && adapter.limits.maxTextureDimension2D) || 8192;
   const islandSrc = downscaleSource(island, maxTex);
-  const islandTex = textureFromSource(device, islandSrc, islandSrc.width, islandSrc.height);
+  let islandTex = textureFromSource(device, islandSrc, islandSrc.width, islandSrc.height);
 
   const carveCanvas = document.createElement("canvas");
   carveCanvas.width = 1024;
@@ -502,23 +538,29 @@ export async function startWebGPU({ mountEl, skin, island, rocks, palms }) {
   const palmsSrc = palms ? downscaleSource(palms, maxTex) : blackCanvas();
   const palmsTex = textureFromSource(device, palmsSrc, palmsSrc.width, palmsSrc.height);
 
-  const uniformData = new Float32Array(8);
+  let islandHiTex = textureFromSource(device, blackCanvas(), 1, 1);
+
+  const uniformData = new Float32Array(20);
   const uniformBuf = device.createBuffer({
-    size: 32,
+    size: 80,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  const bindGroup = device.createBindGroup({
-    layout: bgl,
-    entries: [
-      { binding: 0, resource: { buffer: uniformBuf } },
-      { binding: 1, resource: sampler },
-      { binding: 2, resource: islandTex.createView() },
-      { binding: 3, resource: carveTex.createView() },
-      { binding: 4, resource: rocksTex.createView() },
-      { binding: 5, resource: palmsTex.createView() },
-    ],
-  });
+  function makeBindGroup() {
+    return device.createBindGroup({
+      layout: bgl,
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuf } },
+        { binding: 1, resource: sampler },
+        { binding: 2, resource: islandTex.createView() },
+        { binding: 3, resource: carveTex.createView() },
+        { binding: 4, resource: rocksTex.createView() },
+        { binding: 5, resource: palmsTex.createView() },
+        { binding: 6, resource: islandHiTex.createView() },
+      ],
+    });
+  }
+  let bindGroup = makeBindGroup();
 
   let lastKey = "";
   function uploadCarve() {
@@ -548,6 +590,36 @@ export async function startWebGPU({ mountEl, skin, island, rocks, palms }) {
       uniformData[6] = cam.panY;
       uniformData[7] = cam.rot || 0;
     }
+    let ws = world && world.sample ? world.sample() : null;
+    if (ws && ws.uploadHi && ws.hi) {
+      const hiSrc = downscaleSource(ws.hi, maxTex);
+      islandHiTex = textureFromSource(device, hiSrc, hiSrc.width, hiSrc.height);
+      bindGroup = makeBindGroup();
+      if (world && world.markHiUploaded) world.markHiUploaded(performance.now());
+      ws = world.sample();
+    }
+    if (ws && ws.promoteFull) {
+      const innerTex = islandTex;
+      islandTex = islandHiTex;
+      islandHiTex = textureFromSource(device, blackCanvas(), 1, 1);
+      bindGroup = makeBindGroup();
+      if (innerTex && typeof innerTex.destroy === "function") innerTex.destroy();
+      if (world && world.markPromoted) world.markPromoted();
+      ws = world.sample();
+    }
+    const fullOnly = !ws || ws.bindFullOnly;
+    uniformData[8] = fullOnly ? 0 : ws.offsetX;
+    uniformData[9] = fullOnly ? 0 : ws.offsetY;
+    uniformData[10] = fullOnly ? 1 : ws.scaleX;
+    uniformData[11] = fullOnly ? 1 : ws.scaleY;
+    uniformData[12] = fullOnly ? 0 : ws.offsetHiX;
+    uniformData[13] = fullOnly ? 0 : ws.offsetHiY;
+    uniformData[14] = fullOnly ? 1 : ws.scaleHiX;
+    uniformData[15] = fullOnly ? 1 : ws.scaleHiY;
+    uniformData[16] = fullOnly ? 0 : ws.mix;
+    uniformData[17] = 0;
+    uniformData[18] = 0;
+    uniformData[19] = 0;
     device.queue.writeBuffer(uniformBuf, 0, uniformData);
     const encoder = device.createCommandEncoder();
     const view = context.getCurrentTexture().createView();

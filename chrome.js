@@ -4,6 +4,7 @@ import { initRadio } from "./radio.js";
 import { loadShaders, setPalette } from "./shaders.js";
 import { defineMetrics, setMetric } from "./metrics.js";
 import ENGINE_CSS from "./chrome.css";
+import LMP_CSS from "./lmp.css";
 
 const AUDIO_ID = "latis-bgm";
 
@@ -131,7 +132,7 @@ function injectEngineCss() {
   if (document.getElementById("latis-engine-css")) return;
   const style = document.createElement("style");
   style.id = "latis-engine-css";
-  style.textContent = ENGINE_CSS;
+  style.textContent = ENGINE_CSS + "\n" + LMP_CSS;
   document.head.appendChild(style);
 }
 

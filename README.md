@@ -2,7 +2,10 @@
 
 Public Cloudflare Pages ES module. Titles import `createGame` from this origin. No title skin, no Three.js, no game assets.
 
-Build: `./build.sh` → `dist/engine.min-vnext.js` (staging). `engine.min.js` is the stable pin — do not overwrite it unless promoting. Engine CSS is inlined via `import ENGINE_CSS from "./chrome.css"` + esbuild `--loader:.css=text`.
+Build: `./build.sh` → `dist/engine.min-vnext.js` (staging). `engine.min.js` is the stable pin — do not overwrite it unless promoting. Engine CSS is inlined via `import ENGINE_CSS from "./chrome.css"` + `import LMP_CSS from "./lmp.css"` + esbuild `--loader:.css=text`.
+
+## Music player chrome
+Player look for `.lmp` / `latis-music` lives in `lmp.css` (TT glass pill, cover-crop art, hover seek times, vertical EQ-in-pill, filled volume). **Loader CORE_CSS** (`latis-loader/src/legacy-bundle.js`) is the intended runtime source of truth for titles that `mountPlayer` before the engine. This repo cannot edit that loader from this checkout — copy `lmp.css` into CORE_CSS on the next loader publish. `createGame` still injects `lmp.css` so overlay titles inherit the look. `mountChrome` / `initRadio` / `#radio` stay exported for legacy hosts.
 
 ## Boot
 - `createGame` — grid + chrome + radio + camera + input. Overlay island water via `startRenderer`. Tropical Triki still uses this (draw X/O, grow board). Titles own piece types and game rules.

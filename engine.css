@@ -1,3 +1,9 @@
+/* UNUSED stale fork of chrome.css. chrome.js injects chrome.css + lmp.css.
+ * Do not add player chrome here. #radio child layout belongs in lmp.css
+ * (and latis-loader CORE_CSS). Kept so older links do not 404; safe to delete
+ * once no title imports this file.
+ */
+
 /* Latis chrome — Mash glass, overlay-host layout. No corner bolts. */
 
 :root {

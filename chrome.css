@@ -16,6 +16,9 @@
   --hud-font: "Trebuchet MS", "Avenir Next", "Segoe UI", ui-sans-serif, sans-serif;
   --glass-border: rgba(255, 255, 255, 0.72);
   --glass-blur: 22px;
+  --latis-glass: var(--hud-fill);
+  --latis-glass-border: var(--glass-border);
+  --latis-glass-blur: var(--glass-blur);
 }
 
 * { box-sizing: border-box; }
@@ -794,90 +797,17 @@ html[data-host="overlay"] #score-card #status {
   text-shadow: none;
   font-size: clamp(18px, 2.2vw, 26px);
 }
+/* Overlay #radio is a glass hole. Child layout lives in lmp.css
+ * (`.lmp` / `latis-music`). Do not force a tall cover column here —
+ * that fights loader LMP and TT's left pre-column pill.
+ */
 html[data-host="overlay"] #radio {
   order: unset;
   width: 100%;
   min-width: 0;
-  height: auto;
-  max-height: none;
-  min-height: 0;
+  align-self: start;
+  flex: 0 0 auto;
   overflow: visible;
-  align-self: stretch;
-  flex: 0 0 auto;
-  display: flex !important;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 32px;
-}
-html[data-host="overlay"] #radio-meta {
-  display: contents;
-}
-html[data-host="overlay"] #radio button {
-  flex: 1;
-  width: auto;
-  max-width: none;
-  height: 36px;
-}
-html[data-host="overlay"] #radio-play {
-  width: auto;
-  height: 36px;
-  max-width: none;
-}
-html[data-host="overlay"] #radio-cover {
-  display: block !important;
-  width: 100%;
-  height: auto;
-  max-width: 100%;
-  max-height: min(220px, 26dvh);
-  min-width: 0;
-  min-height: 120px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  flex: 0 0 auto;
-  order: 1;
-}
-html[data-host="overlay"] #radio-eq-wrap {
-  display: block !important;
-  height: 48px;
-  max-height: 48px;
-  min-height: 48px;
-  flex: 0 0 48px;
-  order: 2;
-  border-radius: 10px;
-}
-html[data-host="overlay"] #radio-title {
-  display: block !important;
-  flex: 0 0 auto;
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.2;
-  min-height: 2.4em;
-  order: 3;
-}
-html[data-host="overlay"] #radio-controls {
-  display: flex !important;
-  flex: 0 0 auto;
-  justify-content: space-between;
-  width: 100%;
-  gap: 4px;
-  order: 4;
-}
-html[data-host="overlay"] #radio-vol-wrap {
-  display: flex !important;
-  flex: 0 0 auto;
-  order: 5;
-  min-height: 22px;
-  align-items: center;
-}
-html[data-host="overlay"] #radio-vol {
-  opacity: 1;
-}
-html[data-host="overlay"] #radio-vol-pct {
-  left: 50%;
-  right: auto;
-  top: -18px;
-  transform: translateX(-50%);
 }
 html[data-host="overlay"] #radio-prev,
 html[data-host="overlay"] #radio-next,

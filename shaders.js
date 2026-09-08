@@ -35,7 +35,7 @@ export function setPalette(colors) {
 const DEFAULT_VERT =
   "attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos,0.0,1.0); }";
 
-export const engine = { shaders, palette: [], metrics: [] };
+export const engine = { shaders, palette: [], metrics: [], inventory: [] };
 
 if (typeof window !== "undefined") {
   window.__latisEngine = engine;

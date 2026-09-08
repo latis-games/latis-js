@@ -1,0 +1,81 @@
+/* Structural <latis-inventory> tray. Skin via --latis-* / .latis-glass. No title neon. */
+
+latis-inventory {
+  display: grid;
+  grid-template-columns: repeat(var(--latis-inventory-cols, 2), minmax(0, 1fr));
+  grid-template-rows: auto repeat(var(--latis-inventory-rows, 2), minmax(0, 1fr));
+  gap: var(--latis-gap, 0.5rem);
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: var(--latis-pad, 0.5rem);
+  pointer-events: auto;
+}
+
+latis-inventory > .label {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--latis-ink, inherit);
+  line-height: 1.2;
+}
+
+latis-slot,
+latis-inventory > .latis-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 0;
+  min-height: var(--latis-inventory-slot-min, 3rem);
+  aspect-ratio: 1 / 1;
+  padding: 0.35em;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+latis-slot.is-empty,
+latis-inventory > .latis-slot.is-empty {
+  cursor: default;
+}
+
+latis-slot.is-selected,
+latis-inventory > .latis-slot.is-selected {
+  outline: 2px solid var(--latis-ink, currentColor);
+  outline-offset: 2px;
+}
+
+latis-slot.is-dragging,
+latis-inventory > .latis-slot.is-dragging {
+  opacity: 0.45;
+}
+
+latis-slot > .latis-slot-body,
+latis-inventory > .latis-slot > .latis-slot-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.latis-inventory-ghost {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  opacity: 0.92;
+}
+
+/* Vertical / mobile: one row (cols/rows overridden by layout.css). */
+latis-layout-vertical latis-inventory,
+latis-game[data-layout="vertical"] latis-inventory {
+  grid-template-columns: repeat(var(--latis-inventory-count, 4), minmax(0, 1fr));
+  grid-template-rows: auto 1fr;
+}

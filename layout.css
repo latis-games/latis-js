@@ -1,0 +1,345 @@
+/* Latis game shell — custom elements, light DOM only (no Shadow DOM).
+ * Roots: latis-layout (| latis-layout-horizontal alias) | optional latis-layout-vertical.
+ * Default mobile: engine synthesizes empty latis-layout-vertical + reparents chrome. */
+
+:root {
+  --latis-aspect-threshold: 1.2;
+  --latis-ink: #f7fff8;
+  --latis-muted: rgba(247, 255, 248, 0.72);
+  --latis-glass: rgba(8, 20, 28, 0.55);
+  --latis-glass-border: rgba(255, 255, 255, 0.55);
+  --latis-glass-blur: 18px;
+  --latis-gap: clamp(0.5rem, 1.5vmin, 1rem);
+  --latis-pad: clamp(0.5rem, 1.8vmin, 1.1rem);
+  --latis-radius: clamp(0.65rem, 1.4vmin, 1rem);
+  --latis-font: "Trebuchet MS", "Avenir Next", "Segoe UI", ui-sans-serif, sans-serif;
+  --latis-pre-width: clamp(11rem, 22vw, 20rem);
+  --latis-post-width: clamp(11rem, 22vw, 20rem);
+  --latis-pre-height: clamp(4.5rem, 18vh, 9rem);
+  --latis-post-height: clamp(4.5rem, 18vh, 9rem);
+  --latis-chrome-z: 2;
+  --latis-play-z: 1;
+  --latis-bg-z: 0;
+}
+
+latis-game,
+latis-layout, latis-layout-horizontal,
+latis-layout-vertical,
+latis-background,
+latis-world,
+latis-play,
+latis-board,
+latis-pre,
+latis-post,
+latis-logo,
+latis-music,
+latis-studio,
+latis-score,
+latis-metric,
+latis-inventory,
+latis-slot {
+  display: block;
+  box-sizing: border-box;
+}
+
+latis-game,
+latis-game * { box-sizing: border-box; }
+
+latis-game {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  font-family: var(--latis-font);
+  color: var(--latis-ink);
+}
+
+latis-layout, latis-layout-horizontal,
+latis-layout-vertical {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  container-type: size;
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
+}
+
+latis-layout[hidden], latis-layout-horizontal[hidden],
+latis-layout-vertical[hidden] {
+  display: none !important;
+}
+
+latis-background {
+  position: absolute;
+  inset: 0;
+  z-index: var(--latis-bg-z);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+latis-world {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+latis-play {
+  position: absolute;
+  z-index: var(--latis-play-z);
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  touch-action: none;
+  overflow: hidden;
+  background: transparent;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+latis-board {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+latis-pre,
+latis-post {
+  position: absolute;
+  z-index: var(--latis-chrome-z);
+  display: flex;
+  gap: var(--latis-gap);
+  min-width: 0;
+  min-height: 0;
+  container-type: size;
+  overflow: hidden;
+  pointer-events: auto;
+  padding: var(--latis-pad);
+}
+
+latis-logo,
+latis-music,
+latis-studio,
+latis-score {
+  min-width: 0;
+  min-height: 0;
+  display: block;
+}
+
+latis-logo {
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+latis-music { flex: 0 0 auto; }
+latis-studio { flex: 0 0 auto; }
+latis-score {
+  flex: 1 1 auto;
+  display: flex;
+  gap: var(--latis-gap);
+  overflow: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  width: 100%;
+}
+
+/* ——— Horizontal ——— */
+latis-layout, latis-layout-horizontal { container-name: latis-layout; }
+
+latis-layout latis-play, latis-layout-horizontal latis-play {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+latis-layout latis-pre, latis-layout-horizontal latis-pre,
+latis-layout latis-post, latis-layout-horizontal latis-post {
+  flex-direction: column;
+  top: 0;
+  bottom: 0;
+}
+
+latis-layout latis-pre, latis-layout-horizontal latis-pre {
+  left: 0;
+  width: var(--latis-pre-width);
+  max-width: 42%;
+}
+
+latis-layout latis-post, latis-layout-horizontal latis-post {
+  right: 0;
+  width: var(--latis-post-width);
+  max-width: 42%;
+}
+
+latis-layout latis-logo, latis-layout-horizontal latis-logo { flex: 0 1 auto; }
+latis-layout latis-music, latis-layout-horizontal latis-music { width: 100%; }
+latis-layout latis-studio, latis-layout-horizontal latis-studio { margin-top: auto; }
+latis-layout latis-score, latis-layout-horizontal latis-score { flex-direction: column; }
+
+latis-layout latis-post > latis-inventory,
+latis-layout-horizontal latis-post > latis-inventory {
+  width: 100%;
+  flex: 0 0 auto;
+  margin-top: auto;
+}
+
+/* ——— Vertical ——— */
+latis-layout-vertical { container-name: latis-layout-vertical; }
+
+latis-layout-vertical latis-play {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+latis-layout-vertical latis-pre,
+latis-layout-vertical latis-post {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+latis-layout-vertical latis-pre {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--latis-pre-height);
+  max-height: 28%;
+  overflow: visible;
+}
+
+latis-layout-vertical latis-post,
+latis-game[data-layout="vertical"] latis-post {
+  container-type: normal;
+  left: auto;
+  right: 0;
+  top: var(--latis-pre-height);
+  bottom: auto;
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--latis-pad, 0.5rem));
+  height: fit-content;
+  max-height: none;
+  margin: 0;
+  margin-right: var(--latis-pad, 0.5rem);
+  align-items: center;
+  justify-content: flex-end;
+  overflow: visible;
+}
+
+latis-layout-vertical latis-pre,
+latis-game[data-layout="vertical"] latis-pre {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+latis-layout-vertical latis-logo,
+latis-game[data-layout="vertical"] latis-logo {
+  flex: 0 0 auto;
+  max-height: 100%;
+  width: auto;
+  max-width: min(28vw, 140px);
+  overflow: hidden;
+}
+
+latis-layout-vertical latis-logo img,
+latis-game[data-layout="vertical"] latis-logo img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+latis-layout-vertical latis-music,
+latis-game[data-layout="vertical"] latis-music {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  width: auto;
+}
+
+latis-layout-vertical > latis-studio,
+latis-layout-vertical latis-studio {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  top: auto;
+  margin: 0;
+  align-self: auto;
+  z-index: var(--latis-chrome-z);
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+latis-layout-vertical latis-score {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-content: flex-start;
+  align-items: stretch;
+  width: 100%;
+}
+
+/* Inventory: one row under the board on vertical (above studio). */
+latis-layout-vertical > latis-inventory,
+latis-game[data-layout="vertical"] > latis-layout-vertical > latis-inventory {
+  position: absolute;
+  left: var(--latis-pad);
+  right: var(--latis-pad);
+  top: auto;
+  bottom: calc(2.25rem + env(safe-area-inset-bottom, 0px));
+  width: auto;
+  height: var(--latis-inventory-row-height, clamp(3.5rem, 12vh, 5.5rem));
+  z-index: var(--latis-chrome-z);
+  --latis-inventory-cols: var(--latis-inventory-count, 4);
+  --latis-inventory-rows: 1;
+}
+
+@container latis-layout (max-width: 200px) {
+  latis-score { font-size: 0.85em; }
+}
+
+@container latis-layout-vertical (max-height: 160px) {
+  latis-music { --latis-music-rows: 1; }
+}
+
+.latis-glass {
+  background: var(--latis-glass);
+  border: 1px solid var(--latis-glass-border);
+  border-radius: var(--latis-radius);
+  backdrop-filter: blur(var(--latis-glass-blur));
+  -webkit-backdrop-filter: blur(var(--latis-glass-blur));
+  padding: var(--latis-pad);
+}
+
+.latis-placeholder {
+  color: var(--latis-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.latis-placeholder:not(:only-child) {
+  display: none;
+}

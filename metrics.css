@@ -1,0 +1,121 @@
+/* Latis metrics — <latis-metric title="…"> direct children of latis-post.
+ * Horizontal: each metric is its own mini glass panel.
+ * Vertical: all metrics form one combined row (single strip of chips). */
+
+latis-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  gap: 0.15em;
+  padding: 0.45em 0.7em;
+  text-align: center;
+}
+
+latis-metric > .label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--latis-ink);
+  line-height: 1.2;
+}
+
+latis-metric > .metric-value {
+  font-size: clamp(16px, 2.2vw, 26px);
+  font-weight: 900;
+  color: var(--latis-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+latis-metric#status > .metric-value,
+latis-metric[data-metric="status"] > .metric-value {
+  font-size: clamp(14px, 1.6vw, 18px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+latis-metric#timer > .metric-value,
+latis-metric[data-metric="timer"] > .metric-value {
+  font-size: clamp(18px, 2.4vw, 28px);
+  letter-spacing: 0.04em;
+}
+
+/* ——— Horizontal: each metric = own mini glass panel ——— */
+latis-layout latis-post, latis-layout-horizontal latis-post {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--latis-gap, 0.5rem);
+}
+
+latis-layout latis-post > latis-metric, latis-layout-horizontal latis-post > latis-metric {
+  width: 100%;
+  flex: 0 0 auto;
+  background: var(--latis-glass, rgba(8, 20, 28, 0.55));
+  border: 1px solid var(--latis-glass-border, rgba(255, 255, 255, 0.55));
+  border-radius: var(--latis-radius, 0.75rem);
+  backdrop-filter: blur(var(--latis-glass-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--latis-glass-blur, 18px));
+}
+
+/* ——— Vertical: one combined row (single strip) ——— */
+latis-layout-vertical latis-post,
+latis-game[data-layout="vertical"] latis-post {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0;
+}
+
+latis-layout-vertical latis-post > latis-metric,
+latis-game[data-layout="vertical"] latis-post > latis-metric {
+  flex: 0 0 auto;
+  align-self: center;
+  width: auto;
+  min-width: min-content;
+  min-height: min-content;
+  height: fit-content;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 0;
+  padding: 0.35em 0.65em;
+}
+
+latis-layout-vertical latis-metric > .label,
+latis-layout-vertical latis-metric > .metric-value,
+latis-game[data-layout="vertical"] latis-metric > .label,
+latis-game[data-layout="vertical"] latis-metric > .metric-value {
+  width: auto;
+  min-width: min-content;
+  flex: 0 0 auto;
+}
+
+latis-layout-vertical latis-post:has(> latis-metric),
+latis-game[data-layout="vertical"] latis-post:has(> latis-metric) {
+  background: var(--latis-glass, rgba(8, 20, 28, 0.55));
+  border: 1px solid var(--latis-glass-border, rgba(255, 255, 255, 0.55));
+  border-radius: 999px;
+  backdrop-filter: blur(var(--latis-glass-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--latis-glass-blur, 18px));
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--latis-pad, 0.5rem));
+  margin-right: var(--latis-pad, 0.5rem);
+  padding: 4px 6px;
+  height: fit-content;
+  left: auto;
+  right: 0;
+}
+
+@container latis-layout (max-width: 200px) {
+  latis-metric { font-size: 0.85em; }
+  latis-metric > .metric-value { font-size: 1.1em; }
+}

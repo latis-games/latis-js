@@ -1,5 +1,8 @@
 export { createGame } from "./host.js";
-export { prefetchPlaylistAudio, mountChrome, applyChrome, initRadio, setScoreHud, setLevelHud, setTimerHud, defineMetrics, setMetric } from "./chrome.js";
+export { prefetchPlaylistAudio, mountChrome, applyChrome, initRadio, setScoreHud, setLevelHud, setTimerHud, defineMetrics, setMetric, bindMetrics, bindInventory, bindLayout } from "./chrome.js";
+export { createLayout, defineLayoutElements, TAGS as LAYOUT_TAGS, WIDE_ASPECT } from "./layout.js";
+export { defineMetricElements, getMetric, titleSlug } from "./metrics.js";
+export { defineInventoryElements, setSlot, clearSlot, getSlot, selectSlot, getSelectedSlot, trayShape } from "./inventory.js";
 export { LatisEngine } from "./engine.js";
 export { loadKernel, trikiContext, hostContext } from "./context.js";
 export { startRenderer } from "./renderer.js";

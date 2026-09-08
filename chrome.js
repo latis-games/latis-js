@@ -2,7 +2,9 @@
 
 import { initRadio } from "./radio.js";
 import { loadShaders, setPalette } from "./shaders.js";
-import { defineMetrics, setMetric } from "./metrics.js";
+import { defineMetrics, bindMetrics, setMetric } from "./metrics.js";
+import { bindInventory } from "./inventory.js";
+import { bindLayout } from "./layout.js";
 import ENGINE_CSS from "./chrome.css";
 
 const AUDIO_ID = "latis-bgm";
@@ -137,6 +139,9 @@ function injectEngineCss() {
 
 export function mountChrome(skin) {
   injectEngineCss();
+  if (typeof document !== "undefined" && document.querySelector("latis-game")) {
+    return chromeEls();
+  }
   let app = document.getElementById("app");
   if (!app) {
     app = document.createElement("div");
@@ -186,7 +191,19 @@ export function applyChrome(skin, settings, mode) {
   }
   const palette = s.palette || g.palette;
   if (Array.isArray(palette) && palette.length) setPalette(palette);
-  defineMetrics(s.metrics || g.metrics);
+  if (typeof document !== "undefined" && document.querySelector("latis-game")) {
+    try {
+      bindLayout({ root: document.querySelector("latis-game") });
+    } catch {
+      bindMetrics(document.querySelector("latis-game") || document);
+      bindInventory(document.querySelector("latis-game") || document);
+    }
+  } else if (typeof document !== "undefined" && document.querySelector("latis-metric")) {
+    bindMetrics(document.querySelector("latis-game") || document);
+    bindInventory(document.querySelector("latis-game") || document);
+  } else {
+    defineMetrics(s.metrics || g.metrics);
+  }
 
   const playlist = s.playlist || g.playlist || [];
   ensurePreloads(playlist);
@@ -224,4 +241,11 @@ export function setLevelHud(label) {
   setMetric("level", String(label || ""));
 }
 
-export { initRadio, defineMetrics, setMetric };
+export {
+  initRadio,
+  defineMetrics,
+  setMetric,
+  bindMetrics,
+  bindInventory,
+  bindLayout,
+};

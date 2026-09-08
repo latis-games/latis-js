@@ -15,6 +15,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const webgpuFixture = pathToFileURL(path.join(dir, "fixtures/skin-shader-webgpu.js")).href;
 const webglFixture = pathToFileURL(path.join(dir, "fixtures/skin-shader-webgl.js")).href;
 const canvasFixture = pathToFileURL(path.join(dir, "fixtures/skin-shader-canvas.js")).href;
+const islandAliasFixture = pathToFileURL(path.join(dir, "fixtures/skin-shader-island-aliases.js")).href;
 
 test("pickShaderModuleUrl reads per-tier skin URLs", () => {
   const skin = {
@@ -73,6 +74,43 @@ test("normalizeShaderModule accepts aliases and default object / string", () => 
   assert.equal(e.wgsl, "");
 });
 
+test("normalizeShaderModule accepts island* export aliases", () => {
+  const islandPaint = () => {};
+  const rec = normalizeShaderModule({
+    islandVertex: "iv",
+    islandFragment: "if",
+    islandWgsl: "iw",
+    islandPaint,
+  });
+  assert.equal(rec.vertex, "iv");
+  assert.equal(rec.fragment, "if");
+  assert.equal(rec.wgsl, "iw");
+  assert.equal(rec.paint, islandPaint);
+
+  const paintIsland = () => {};
+  const viaPaintIsland = normalizeShaderModule({ paintIsland });
+  assert.equal(viaPaintIsland.paint, paintIsland);
+});
+
+test("normalizeShaderModule prefers generic names over island* aliases", () => {
+  const genericPaint = () => {};
+  const islandPaint = () => {};
+  const rec = normalizeShaderModule({
+    vertex: "v",
+    islandVertex: "iv",
+    fragment: "f",
+    islandFragment: "if",
+    wgsl: "w",
+    islandWgsl: "iw",
+    paint: genericPaint,
+    islandPaint,
+  });
+  assert.equal(rec.vertex, "v");
+  assert.equal(rec.fragment, "f");
+  assert.equal(rec.wgsl, "w");
+  assert.equal(rec.paint, genericPaint);
+});
+
 test("normalizeShaderModule empty module is blank", () => {
   const rec = normalizeShaderModule(null);
   assert.equal(rec.vertex, "");
@@ -94,6 +132,21 @@ test("resolveShaders imports the title module by kind", async () => {
   const canvas = {};
   c2d.paint(canvas);
   assert.equal(canvas._painted, true);
+});
+
+test("resolveShaders maps island* exports from a title module", async () => {
+  const gpu = await resolveShaders({ webgpuUrl: islandAliasFixture }, "webgpu");
+  assert.match(gpu.wgsl, /island_vs/);
+
+  const gl = await resolveShaders({ webglUrl: islandAliasFixture }, "webgl");
+  assert.match(gl.vertex, /a_island/);
+  assert.match(gl.fragment, /gl_FragColor/);
+
+  const c2d = await resolveShaders({ canvasUrl: islandAliasFixture }, "canvas");
+  assert.equal(typeof c2d.paint, "function");
+  const canvas = {};
+  c2d.paint(canvas);
+  assert.equal(canvas._islandPainted, true);
 });
 
 test("resolveShaders prefers skin.resolveShaders hook", async () => {

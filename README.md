@@ -53,3 +53,5 @@ skin.canvasUrl = "./render/canvas.js";   // export { paint }
 ```
 
 Relative URLs resolve against `document.baseURI`. If a tier URL is omitted, that path uses the engine fallback shader (same uniforms / textures as today). Game Dev should retarget Tropical Triki to title-owned `./render/webgpu.js` (etc.) when ready — do not keep island-named helpers in the engine.
+
+`normalizeShaderModule` also accepts Tropical Triki's current `islandWgsl` / `islandVertex` / `islandFragment` / `islandPaint` (or `paintIsland`) exports as input-side aliases. Generic names win when both are present.

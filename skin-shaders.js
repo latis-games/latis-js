@@ -43,9 +43,26 @@ function asString(v) {
   return typeof v === "string" ? v : "";
 }
 
+function firstString(rec, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const s = asString(rec[keys[i]]);
+    if (s) return s;
+  }
+  return "";
+}
+
+function firstFn(rec, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const fn = rec[keys[i]];
+    if (typeof fn === "function") return fn;
+  }
+  return null;
+}
+
 /**
  * Normalize a dynamically imported (or inline) module into engine shader fields.
  * Accepts named exports, a default object, or a default string (wgsl / fragment by kind).
+ * Tropical Triki island* export names are input-side aliases only; generic names win.
  * @param {object | string | null | undefined} mod
  * @param {string} [kind]
  */
@@ -67,17 +84,11 @@ export function normalizeShaderModule(mod, kind) {
   } else if (mod.default && typeof mod.default === "object") {
     rec = { ...mod.default, ...mod };
   }
-  const paint =
-    typeof rec.paint === "function"
-      ? rec.paint
-      : typeof rec.paintCanvas === "function"
-        ? rec.paintCanvas
-        : null;
   return {
-    vertex: asString(rec.vertex || rec.vertexSrc || rec.vs),
-    fragment: asString(rec.fragment || rec.fragmentSrc || rec.fs),
-    wgsl: asString(rec.wgsl || rec.wgslSrc || rec.code),
-    paint,
+    vertex: firstString(rec, ["vertex", "vertexSrc", "vs", "islandVertex"]),
+    fragment: firstString(rec, ["fragment", "fragmentSrc", "fs", "islandFragment"]),
+    wgsl: firstString(rec, ["wgsl", "wgslSrc", "code", "islandWgsl"]),
+    paint: firstFn(rec, ["paint", "paintCanvas", "islandPaint", "paintIsland"]),
   };
 }
 

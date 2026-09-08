@@ -212,17 +212,19 @@ function bindTrayEvents(tray, list) {
     if (rec.el) rec.el.classList.remove("is-dragging");
     const x = ev && ev.clientX != null ? ev.clientX : drag.x;
     const y = ev && ev.clientY != null ? ev.clientY : drag.y;
-    emit(tray, "latis-inventory-drag", {
-      type: "end",
-      x,
-      y,
-      index: rec.index,
-      id: rec.id,
-      slot: rec.el,
-      value: rec.value,
-      moved: drag.moved,
-      dropped: !!dropped,
-    });
+    if (drag.moved) {
+      emit(tray, "latis-inventory-drag", {
+        type: "end",
+        x,
+        y,
+        index: rec.index,
+        id: rec.id,
+        slot: rec.el,
+        value: rec.value,
+        moved: true,
+        dropped: !!dropped,
+      });
+    }
     try {
       if (drag.pointerId != null) tray.releasePointerCapture(drag.pointerId);
     } catch {

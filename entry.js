@@ -40,4 +40,14 @@ export {
   stickLine,
   strokeStick,
 } from "./draw.js";
-export { shaders, loadShaders, getShader, mountShader, engine, setPalette } from "./shaders.js";
+export {
+  shaders,
+  loadShaders,
+  getShader,
+  mountShader,
+  engine,
+  setPalette,
+  pickShaderModuleUrl,
+  resolveShaders,
+  normalizeShaderModule,
+} from "./shaders.js";

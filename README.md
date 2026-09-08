@@ -40,4 +40,18 @@ Raw `.bin` int16 soup stays a title-side `fetch` + `Int16Array`. Do not route th
 ## Camera / input
 Shared zoom + pan + rot on `window.__latisCamera`. Two-finger trackpad + Safari pinch + mobile pinch zoom; WASD/arrows pan with A/D inverted vs the old mapping; Q/E rotate the cay; no mouse/trackpad pan. `u_pan` / `u_rot` are in WebGL + WGSL. Host UV and the hit grid use the same mapping so strokes stay on the carved board.
 
-Paint modes (`skin.paint`): `"overlay"` (island water, default), `"board"` (clear + `skin.draw`), `"scene"`.
+Paint modes (`skin.paint`): `"overlay"` (GPU/GL overlay, default), `"board"` (clear + `skin.draw`), `"scene"`.
+
+## Overlay shaders
+Titles may point the skin at their own per-tier modules. The engine loads them generically (`pickShaderModuleUrl` / `resolveShaders`) and keeps WebGPU → WebGL → Canvas2D fallback:
+
+```js
+skin.webgpuUrl = "./render/webgpu.js";   // export { wgsl } or default string
+skin.webglUrl  = "./render/webgl.js";    // export { vertex, fragment }
+skin.canvasUrl = "./render/canvas.js";   // export { paint }
+// or skin.resolveShaders = async (kind) => ({ wgsl | vertex, fragment | paint })
+```
+
+Relative URLs resolve against `document.baseURI`. If a tier URL is omitted, that path uses the engine fallback shader (same uniforms / textures as today). Game Dev should retarget Tropical Triki to title-owned `./render/webgpu.js` (etc.) when ready — do not keep island-named helpers in the engine.
+
+`normalizeShaderModule` also accepts Tropical Triki's current `islandWgsl` / `islandVertex` / `islandFragment` / `islandPaint` (or `paintIsland`) exports as input-side aliases. Generic names win when both are present.

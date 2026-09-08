@@ -1,5 +1,7 @@
 /** Engine shader registry. Titles fetch a Pages-safe manifest; no directory listing. */
 
+export { pickShaderModuleUrl, resolveShaders, normalizeShaderModule } from "./skin-shaders.js";
+
 export const shaders = {};
 
 const PALETTE_MAX = 12;

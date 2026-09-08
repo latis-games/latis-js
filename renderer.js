@@ -1,15 +1,16 @@
-/** Engine-owned island renderer. WebGPU / WebGL2 Gerstner + depth/foam, Canvas2D Tesla fallback.
- * Title does not import Three.js. No Water Pro package.
+/** Engine renderer. WebGPU → WebGL2 → Canvas2D. Overlay shader source comes
+ * from the title skin module (`skin.webgpuUrl` / `webglUrl` / `canvasUrl`) when set.
  *
  * Paint modes (skin.paint):
- *   "overlay" (default) — island water (Gerstner).
- *   "board"             — skip Gerstner; clear + call skin.draw if provided.
- *   "scene"             — no island path; title drives packs/scene.js.
+ *   "overlay" (default) — GPU/GL overlay (skin module or engine fallback).
+ *   "board"             — skip overlay shaders; clear + call skin.draw if provided.
+ *   "scene"             — no overlay path; title drives packs/scene.js.
  */
 import { stickLine, stickX, stickO, strokeStick } from "./draw.js";
 import { startWebGPU } from "./gpu.js";
 import { bindCamera, getCamera, playfieldZoom as camPlayfieldZoom, currentZoom as camCurrentZoom, setZoom as camSetZoom } from "./camera.js";
 import { setMetric } from "./metrics.js";
+import { pickShaderModuleUrl, resolveShaders } from "./skin-shaders.js";
 
 /** Local zoom helper. Reads skin.playfieldZoom or skin zoom fields. Never imports a title skin. */
 let _activeSkin = null;
@@ -604,7 +605,14 @@ async function startWebGL(mountEl, skin, island, rocks, palms) {
   mountEl.appendChild(canvas);
   const gl = canvas.getContext("webgl2", { alpha: false, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: true });
   if (!gl || gl.isContextLost()) throw new Error("WebGL2 missing");
-  const prog = makeProgram(gl, VS, FS);
+  const loaded = await resolveShaders(skin, "webgl");
+  if (pickShaderModuleUrl(skin, "webgl") && !loaded.fragment) {
+    throw new Error("startWebGL: skin.webglUrl produced no fragment");
+  }
+  const vsSrc = loaded.vertex || VS;
+  const fsSrc = loaded.fragment || FS;
+  if (!fsSrc) throw new Error("startWebGL: no fragment");
+  const prog = makeProgram(gl, vsSrc, fsSrc);
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
@@ -721,7 +729,7 @@ async function startWebGL(mountEl, skin, island, rocks, palms) {
   return { path: "webgl", canvas, frame, gl };
 }
 
-function startCanvas2D(mountEl, skin, island) {
+async function startCanvas2D(mountEl, skin, island) {
   const canvas = document.createElement("canvas");
   canvas.id = "board-2d";
   canvas.setAttribute("aria-hidden", "true");
@@ -730,6 +738,11 @@ function startCanvas2D(mountEl, skin, island) {
   canvas.style.pointerEvents = "none";
   mountEl.appendChild(canvas);
   skin.setCanvas2D(canvas);
+  const loaded = await resolveShaders(skin, "canvas");
+  if (pickShaderModuleUrl(skin, "canvas") && typeof loaded.paint !== "function") {
+    throw new Error("startCanvas2D: skin.canvasUrl produced no paint");
+  }
+  const paint = typeof loaded.paint === "function" ? loaded.paint : null;
   let lastKey = "";
   function frame() {
     sizeCanvas(canvas, mountEl);
@@ -739,7 +752,8 @@ function startCanvas2D(mountEl, skin, island) {
     const key = skin.sourceKey() + "|" + canvas.width + "x" + canvas.height + "|z" + currentZoom() + "|f" + fade.toFixed(3) + "|p" + cam.panX.toFixed(4) + "," + cam.panY.toFixed(4) + "|r" + (cam.rot || 0).toFixed(4) + "|t" + tBucket;
     if (key === lastKey) return;
     lastKey = key;
-    paintCanvas2D(canvas, island, skin);
+    if (paint) paint(canvas, { island, skin, camera: cam, zoom: currentZoom() });
+    else paintCanvas2D(canvas, island, skin);
   }
   frame();
   if (typeof ResizeObserver === "function") {
@@ -839,7 +853,7 @@ export async function startRenderer({ mountEl, skin }) {
     }
   }
   if (!gpu) {
-    gpu = startCanvas2D(mountEl, skin, island);
+    gpu = await startCanvas2D(mountEl, skin, island);
     path = "2d";
   }
 

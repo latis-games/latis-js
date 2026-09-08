@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" data-host="overlay">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LMP chrome defaults</title>
+    <link rel="stylesheet" href="../chrome.css" />
+    <link rel="stylesheet" href="../lmp.css" />
+    <style>
+      html[data-host="overlay"],
+      html[data-host="overlay"] body,
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        background:
+          radial-gradient(120% 80% at 50% 0%, #2aa0d4 0%, #0a5a7a 45%, #052433 100%) !important;
+        font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+      }
+      .stage {
+        padding: 24px;
+        display: grid;
+        gap: 28px;
+      }
+      h1 { margin: 0; font-size: 18px; color: #fffef4; }
+      h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffe566; }
+      .row { display: flex; flex-direction: column; gap: 10px; max-width: 360px; }
+      #wide.lmp { /* force wide grid even on this page */ }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <h1>Engine LMP defaults (no title CSS)</h1>
+      <section class="row">
+        <h2>Horizontal pill (wide)</h2>
+        <div id="radio" class="lmp" aria-label="Now playing">
+          <img class="lmp-art latis-art" alt="" width="400" height="400" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff8a3d'/><stop offset='1' stop-color='%230a6b8a'/></linearGradient></defs><rect width='400' height='400' fill='url(%23g)'/><circle cx='200' cy='160' r='70' fill='%23ffe566'/></svg>" />
+          <p class="lmp-title">Tropical Triki</p>
+          <input class="lmp-seek" type="range" min="0" max="1000" value="320" aria-label="Seek" style="--vol-pct:32%" />
+          <div class="lmp-times"><span>1:12</span><span>-2:04</span></div>
+          <div class="lmp-controls">
+            <button class="lmp-btn" type="button" aria-label="Previous">|◀</button>
+            <button class="lmp-btn lmp-btn--play" type="button" aria-label="Play">▶</button>
+            <button class="lmp-btn" type="button" aria-label="Next">▶|</button>
+          </div>
+          <div class="lmp-vol-row">
+            <span class="lmp-vol-ico" aria-hidden="true">♪</span>
+            <input class="lmp-gain" type="range" min="0" max="100" value="72" aria-label="Volume" style="--vol-pct:72%" />
+          </div>
+          <canvas class="lmp-eq" width="200" height="40" aria-hidden="true"></canvas>
+        </div>
+      </section>
+      <section class="row">
+        <h2>Vertical compact pill</h2>
+        <div id="compact" class="lmp lmp--compact" aria-label="Now playing">
+          <img class="lmp-art latis-art" alt="" width="400" height="400" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff8a3d'/><stop offset='1' stop-color='%230a6b8a'/></linearGradient></defs><rect width='400' height='400' fill='url(%23g)'/><circle cx='200' cy='160' r='70' fill='%23ffe566'/></svg>" />
+          <p class="lmp-title">Tropical Triki</p>
+          <canvas class="lmp-eq" width="200" height="40" aria-hidden="true"></canvas>
+          <div class="lmp-controls">
+            <button class="lmp-btn" type="button" aria-label="Previous">|◀</button>
+            <button class="lmp-btn lmp-btn--play" type="button" aria-label="Play">▶</button>
+            <button class="lmp-btn" type="button" aria-label="Next">▶|</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      document.querySelectorAll(".lmp-eq").forEach((c) => {
+        const ctx = c.getContext("2d");
+        const w = c.width, h = c.height, bars = 16;
+        ctx.clearRect(0, 0, w, h);
+        for (let i = 0; i < bars; i++) {
+          const bh = 6 + (i % 5) * 5;
+          ctx.fillStyle = "rgba(255,255,255,0.45)";
+          ctx.fillRect((w / bars) * i + 1, h - bh, w / bars - 2, bh);
+        }
+      });
+    </script>
+  </body>
+</html>

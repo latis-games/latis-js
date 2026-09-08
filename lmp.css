@@ -138,24 +138,60 @@ latis-art,
   clip: rect(0, 0, 0, 0);
 }
 
-/* Seek times: hidden until hover / focus-within */
+/* Seek times: hidden until hover (not focus-within — sliders would pin them open) */
 .lmp-times {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   font: 500 11px/1 var(--latis-font, system-ui, sans-serif);
   color: inherit;
-  opacity: 0;
+  opacity: 0 !important;
   pointer-events: none;
   transition: opacity 0.15s ease;
 }
 .lmp:hover .lmp-times,
-.lmp:focus-within .lmp-times,
 latis-music:hover .lmp-times,
-latis-music:focus-within .lmp-times,
-#radio:hover .lmp-times,
-#radio:focus-within .lmp-times {
-  opacity: 0.7;
+#radio:hover .lmp-times {
+  opacity: 0.7 !important;
+}
+
+/* Seek track matches volume glass chrome */
+.lmp-seek,
+.lmp input.lmp-seek[type="range"],
+#radio.lmp .lmp-seek,
+latis-music .lmp-seek {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.lmp-seek::-webkit-slider-runnable-track,
+#radio.lmp .lmp-seek::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 99px;
+  background: linear-gradient(
+    to right,
+    var(--lmp-gain-fill) var(--vol-pct, 0%),
+    var(--lmp-muted) var(--vol-pct, 0%)
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+.lmp-seek::-webkit-slider-thumb,
+#radio.lmp .lmp-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -3.5px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(18, 40, 70, 0.35);
 }
 
 /* Volume: filled track + glass thumb (overrides loader CORE_CSS 4px !important) */
@@ -294,7 +330,8 @@ html[data-host="overlay"] #radio.lmp--compact {
   latis-layout latis-music,
   latis-layout-horizontal latis-music,
   html[data-host="overlay"] #radio.lmp,
-  html[data-host="overlay"] #radio.lmp--compact {
+  html[data-host="overlay"] #radio.lmp:not(.lmp--compact),
+  .lmp:not(.lmp--compact) {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) auto;
     grid-template-rows: auto auto auto;
@@ -306,6 +343,10 @@ html[data-host="overlay"] #radio.lmp--compact {
     row-gap: 4px;
     width: min(320px, 36vw, 100%);
     max-width: min(320px, 36vw, 100%);
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible;
     padding: 8px 10px;
     border-radius: var(--latis-music-radius-compact);
   }
@@ -364,7 +405,64 @@ html[data-host="overlay"] #radio.lmp--compact {
   }
 }
 
-/* ——— Vertical / compact: EQ in the pill with/behind the title ——— */
+/* Explicit compact class always uses the vertical pill, even on a wide window. */
+.lmp.lmp--compact,
+#radio.lmp--compact,
+latis-music.lmp--compact {
+  display: grid !important;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-rows: 44px;
+  grid-template-areas: "art title controls";
+  align-items: center;
+  column-gap: 6px;
+  width: 100%;
+  max-width: none;
+  height: 52px !important;
+  min-height: 52px !important;
+  max-height: 52px !important;
+  padding: 4px 6px !important;
+  border-radius: var(--latis-music-radius-compact) !important;
+  overflow: hidden;
+}
+.lmp.lmp--compact .lmp-art,
+#radio.lmp--compact .lmp-art,
+latis-music.lmp--compact .lmp-art {
+  grid-area: art;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+}
+.lmp.lmp--compact .lmp-title,
+#radio.lmp--compact .lmp-title,
+latis-music.lmp--compact .lmp-title {
+  grid-area: title;
+  position: relative;
+  z-index: 1;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1;
+}
+.lmp.lmp--compact .lmp-eq,
+#radio.lmp--compact .lmp-eq,
+latis-music.lmp--compact .lmp-eq {
+  grid-area: title;
+  z-index: 0;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+}
+.lmp.lmp--compact .lmp-controls { grid-area: controls; }
+.lmp.lmp--compact .lmp-vol-row,
+.lmp.lmp--compact .lmp-gain,
+.lmp.lmp--compact .lmp-seek,
+.lmp.lmp--compact .lmp-times {
+  display: none !important;
+}
+
+/* ——— Vertical / compact viewport: EQ in the pill with/behind the title ——— */
 @media (width <= 900px), (orientation: portrait) {
   latis-layout-vertical latis-music,
   latis-game[data-layout="vertical"] latis-music,

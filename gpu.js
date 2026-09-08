@@ -1,7 +1,8 @@
-/** Raw WebGPU island water. Own WGSL — no Three.js, no three/webgpu, no Water Pro FFT.
- * Look stolen from renderer.js GLSL: Gerstner + shore foam + rock hard-clip + carve grooves.
+/** Raw WebGPU overlay. Shader source comes from the title skin module
+ * (`skin.webgpuUrl` / `resolveShaders`) when set; otherwise the engine fallback WGSL.
  */
 import { getCamera, currentZoom as camCurrentZoom } from "./camera.js";
+import { pickShaderModuleUrl, resolveShaders } from "./skin-shaders.js";
 let _activeSkin = null;
 
 const WGSL = /* wgsl */ `
@@ -449,7 +450,13 @@ export async function startWebGPU({ mountEl, skin, island, rocks, palms }) {
   const format = navigator.gpu.getPreferredCanvasFormat();
   context.configure({ device, format, alphaMode: "opaque" });
 
-  const shader = device.createShaderModule({ code: WGSL });
+  const loaded = await resolveShaders(skin, "webgpu");
+  if (pickShaderModuleUrl(skin, "webgpu") && !loaded.wgsl) {
+    throw new Error("startWebGPU: skin.webgpuUrl produced no wgsl");
+  }
+  const wgsl = loaded.wgsl || WGSL;
+  if (!wgsl) throw new Error("startWebGPU: no wgsl");
+  const shader = device.createShaderModule({ code: wgsl });
   if (typeof shader.getCompilationInfo === "function") {
     const info = await shader.getCompilationInfo();
     const err = (info.messages || []).find((m) => m.type === "error");

@@ -89,7 +89,7 @@ export function currentZoom(skin) {
 
 export function clampPan(panX, panY, vw, vh, zoom) {
   const side = Math.max(vw, vh, 1);
-  const z = Math.max(1, Number(zoom) || 1);
+  const z = Math.max(1e-6, Number(zoom) || 1);
   const maxX = Math.max(0, 0.5 - vw / (2 * side * z));
   const maxY = Math.max(0, 0.5 - vh / (2 * side * z));
   return {

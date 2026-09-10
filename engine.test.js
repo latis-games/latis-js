@@ -1,9 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { LatisEngine } from "./engine.js";
-import { PAN_KEY_DELTA, ROT_KEY_DELTA, applyRotToLocal } from "./camera.js";
+import {
+  PAN_KEY_DELTA,
+  ROT_KEY_DELTA,
+  applyRotToLocal,
+  playfieldZoom,
+  clampPan,
+  screenToIslandUV,
+} from "./camera.js";
 import { engine, setPalette } from "./shaders.js";
 import { defineMetrics, setMetric } from "./metrics.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 test("sized at runtime", () => {
   const a = new LatisEngine(3, 3);
@@ -174,6 +186,57 @@ test("engine.palette is an array; [0] is primary", () => {
   assert.deepEqual(engine.palette, ["#abc", "rgb(1, 2, 3)"]);
   setPalette("not-an-array");
   assert.deepEqual(engine.palette, []);
+});
+
+test("WebGPU and WebGL paint zoom < 1 instead of clamping at 1", () => {
+  const gpu = readFileSync(join(here, "gpu.js"), "utf8");
+  const gl = readFileSync(join(here, "renderer.js"), "utf8");
+  assert.match(gpu, /p \/ max\(u\.zoom, 1e-6\)/);
+  assert.match(gl, /p \/ max\(u_zoom, 1e-6\)/);
+  assert.doesNotMatch(gpu, /max\(u\.zoom, 1\.0\)/);
+  assert.doesNotMatch(gl, /max\(u_zoom, 1\.0\)/);
+  assert.match(gpu, /uniformData\[3\] = currentZoom\(\)/);
+  assert.match(gl, /gl\.uniform1f\(uZoom, currentZoom\(\)\)/);
+});
+
+test("cover zoom 0.55 stores and maps more island UV than zoom 1", () => {
+  const prev = globalThis.window;
+  globalThis.window = {
+    __latisCamera: { zoom: 0.55, zoomUser: true, panX: 0, panY: 0, rot: 0 },
+    innerWidth: 800,
+    innerHeight: 600,
+    document: { getElementById() { return null; } },
+  };
+  try {
+    const skin = { zoomMin: 0.55, zoomMax: 2.4 };
+    assert.equal(playfieldZoom(800, 600, skin), 0.55);
+
+    const rect = { left: 0, top: 0, width: 800, height: 600 };
+    const box1 = { zoom: 1, panX: 0, panY: 0, rot: 0 };
+    const boxOut = { zoom: 0.55, panX: 0, panY: 0, rot: 0 };
+    const mid1 = screenToIslandUV(400, 300, rect, box1);
+    const midOut = screenToIslandUV(400, 300, rect, boxOut);
+    assert.ok(Math.abs(mid1.x - 0.5) < 1e-6);
+    assert.ok(Math.abs(midOut.x - 0.5) < 1e-6);
+
+    const left1 = screenToIslandUV(0, 300, rect, box1);
+    const leftOut = screenToIslandUV(0, 300, rect, boxOut);
+    // Cover side = max(w,h). Zoom 1 maps the left cover edge to UV 0.
+    // Zoom 0.55 maps that same pixel past the photo (more island on screen).
+    assert.ok(Math.abs(left1.x) < 1e-6);
+    assert.ok(leftOut.x < -0.3);
+    const span1 = screenToIslandUV(800, 300, rect, box1).x - left1.x;
+    const spanOut = screenToIslandUV(800, 300, rect, boxOut).x - leftOut.x;
+    assert.ok(spanOut > span1);
+    assert.ok(Math.abs(spanOut - 1 / 0.55) < 1e-6);
+
+    const pan = clampPan(0.4, 0.4, 800, 600, 0.55);
+    assert.equal(pan.panX, 0);
+    assert.equal(pan.panY, 0);
+  } finally {
+    if (prev === undefined) delete globalThis.window;
+    else globalThis.window = prev;
+  }
 });
 
 test("engine.metrics is an array keyed by id", () => {
